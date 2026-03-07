@@ -2186,6 +2186,266 @@ sdk.dir=/home/mark/android-sdk
 - Handle edge cases (touch outside model)
 - Prevent tool application if no valid hit point
 
+## Risks and Unknowns
+
+### Technical Risks
+
+**High Risk:**
+
+1. **OpenGL ES Performance on Low-End Devices**
+   - Risk: Real-time mesh updates may not achieve 30 FPS on older devices
+   - Impact: Poor user experience, app unusable on budget phones
+   - Mitigation: 
+     - Implement adaptive mesh quality
+     - Profile on minimum spec device (Android 8.0, 2GB RAM)
+     - Add performance mode with reduced visual quality
+   - Unknown: Actual performance on target devices
+
+2. **Memory Constraints with Large Models**
+   - Risk: 50K vertex models may cause OOM crashes on 2GB RAM devices
+   - Impact: App crashes, data loss
+   - Mitigation:
+     - Implement mesh decimation
+     - Warn users before exceeding limits
+     - Add memory monitoring
+     - Implement streaming/paging for very large models
+   - Unknown: Actual memory usage patterns during sculpting
+
+3. **Touch Input Precision**
+   - Risk: Ray casting may be inaccurate, tools apply to wrong areas
+   - Impact: Frustrating user experience, imprecise sculpting
+   - Mitigation:
+     - Implement spatial acceleration (octree)
+     - Add visual feedback (cursor preview)
+     - Allow zoom for fine detail work
+   - Unknown: Touch precision on different screen sizes/densities
+
+**Medium Risk:**
+
+4. **File Format Compatibility**
+   - Risk: Future versions may break compatibility with old .clay files
+   - Impact: Users lose access to old models
+   - Mitigation:
+     - Version field in header
+     - Implement migration logic
+     - Maintain backward compatibility for at least 2 versions
+   - Unknown: How format will evolve over time
+
+5. **STL Export Quality**
+   - Risk: Exported STLs may have issues (non-manifold, inverted normals)
+   - Impact: Models fail to print, user frustration
+   - Mitigation:
+     - Comprehensive validation before export
+     - Automatic repair where possible
+     - Clear warnings to user
+     - Test with multiple slicing software
+   - Unknown: Real-world 3D printing success rate
+
+6. **Undo/Redo Memory Usage**
+   - Risk: Storing 20 full model copies uses excessive memory
+   - Impact: OOM crashes, slow performance
+   - Mitigation:
+     - Implement delta compression (store only changes)
+     - Reduce undo stack size on low-memory devices
+     - Clear undo stack on memory pressure
+   - Unknown: Optimal undo stack size vs memory trade-off
+
+7. **Android Fragmentation**
+   - Risk: Different behaviors on different Android versions/manufacturers
+   - Impact: Bugs on specific devices, inconsistent experience
+   - Mitigation:
+     - Test on multiple devices (Samsung, Pixel, OnePlus, etc.)
+     - Use Android compatibility libraries
+     - Handle manufacturer-specific quirks
+   - Unknown: Device-specific issues until testing
+
+**Low Risk:**
+
+8. **Storage Permissions (Android 11+)**
+   - Risk: Scoped storage restrictions may complicate file access
+   - Impact: Cannot save/load files as expected
+   - Mitigation:
+     - Use MediaStore API
+     - Request appropriate permissions
+     - Fallback to app-private storage
+   - Status: Well-documented, standard solution exists
+
+9. **Coordinate System Confusion**
+   - Risk: Y-up to Z-up conversion may introduce bugs
+   - Impact: Models export upside-down or rotated incorrectly
+   - Mitigation:
+     - Comprehensive unit tests
+     - Visual verification during development
+     - User-facing "preview" before export
+   - Status: Testable, fixable
+
+### UX/Design Risks
+
+**Medium Risk:**
+
+10. **Learning Curve**
+    - Risk: Users unfamiliar with 3D modeling struggle to use app
+    - Impact: Poor reviews, low retention
+    - Mitigation:
+      - Interactive tutorial on first launch
+      - Tooltips and hints
+      - Example models to explore
+      - Help documentation
+    - Unknown: Target user's 3D modeling experience level
+
+11. **Touch Gestures Conflicts**
+    - Risk: Pinch/pan/rotate gestures interfere with tool usage
+    - Impact: Accidental actions, frustration
+    - Mitigation:
+      - Clear mode separation (View mode vs Edit mode)
+      - Visual feedback for active gesture
+      - Configurable gesture sensitivity
+    - Unknown: Optimal gesture detection thresholds
+
+12. **Small Screen Usability**
+    - Risk: UI too cramped on phones, tools hard to select
+    - Impact: Poor mobile experience
+    - Mitigation:
+      - Responsive layout
+      - Collapsible panels
+      - Tablet-optimized layout
+      - Test on 5" screen minimum
+    - Unknown: Minimum practical screen size
+
+### Business/Scope Risks
+
+**High Risk:**
+
+13. **Scope Creep**
+    - Risk: Feature requests expand beyond MVP
+    - Impact: Delayed launch, incomplete features
+    - Mitigation:
+      - Strict MVP definition
+      - Feature prioritization
+      - Post-launch roadmap for enhancements
+    - Status: Requires discipline
+
+14. **3D Printing Ecosystem Changes**
+    - Risk: STL format becomes obsolete, new formats emerge
+    - Impact: App becomes less relevant
+    - Mitigation:
+      - Monitor 3D printing trends
+      - Design for extensible export formats
+      - Consider 3MF format support
+    - Unknown: Future of 3D printing file formats
+
+**Low Risk:**
+
+15. **Competition**
+    - Risk: Similar apps already exist or emerge
+    - Impact: Reduced user adoption
+    - Mitigation:
+      - Focus on simplicity and ease of use
+      - Target beginners, not professionals
+      - Free and open-source advantage
+    - Status: Acceptable risk for learning project
+
+### Technical Unknowns
+
+**Critical Unknowns:**
+
+1. **OpenGL ES 3.0 Availability**
+   - Question: What % of Android 8.0+ devices support OpenGL ES 3.0?
+   - Impact: May need OpenGL ES 2.0 fallback
+   - Resolution: Check Android device statistics, test on real devices
+
+2. **Mesh Topology Preservation**
+   - Question: How to maintain good topology during sculpting?
+   - Impact: Models may become difficult to edit or export poorly
+   - Resolution: Research mesh editing algorithms, implement remeshing
+
+3. **Optimal Subdivision Level**
+   - Question: What's the best default sphere subdivision for editing?
+   - Impact: Too low = blocky, too high = slow
+   - Resolution: User testing, performance profiling
+
+4. **Tool Falloff Curves**
+   - Question: What falloff function feels most natural?
+   - Impact: Tools feel too harsh or too soft
+   - Resolution: User testing, adjustable falloff
+
+**Important Unknowns:**
+
+5. **File Size Growth**
+   - Question: How large do models get with heavy editing?
+   - Impact: Storage concerns, slow save/load
+   - Resolution: Monitor during development, implement compression if needed
+
+6. **Battery Usage**
+   - Question: How much battery does real-time 3D rendering consume?
+   - Impact: User complaints about battery drain
+   - Resolution: Profile battery usage, optimize rendering
+
+7. **Thermal Throttling**
+   - Question: Will sustained sculpting cause device to throttle?
+   - Impact: Performance degrades over time
+   - Resolution: Test extended sessions, implement frame rate limiting
+
+8. **Accessibility for 3D Apps**
+   - Question: How to make 3D sculpting accessible to screen reader users?
+   - Impact: Excludes users with visual impairments
+   - Resolution: Research accessibility best practices, may be out of scope for MVP
+
+### Dependency Risks
+
+**Low Risk:**
+
+9. **Kotest/Testing Framework**
+   - Risk: Testing framework has breaking changes
+   - Impact: Tests fail, need refactoring
+   - Mitigation: Pin versions, gradual upgrades
+   - Status: Stable, mature library
+
+10. **Android SDK Changes**
+    - Risk: New Android versions break compatibility
+    - Impact: App doesn't work on latest Android
+    - Mitigation: Follow Android best practices, test beta releases
+    - Status: Manageable with proper testing
+
+### Risk Mitigation Strategy
+
+**Phase 1: Proof of Concept (Week 1-2)**
+- Build minimal OpenGL renderer with sphere
+- Test performance on low-end device
+- Validate touch input precision
+- Decision point: Continue or pivot?
+
+**Phase 2: Core Features (Week 3-6)**
+- Implement one tool (Remove Clay)
+- Test on multiple devices
+- Measure memory usage
+- Validate file format
+
+**Phase 3: Polish & Testing (Week 7-8)**
+- User testing with target audience
+- Performance optimization
+- Bug fixes
+- Documentation
+
+**Risk Review Cadence:**
+- Weekly risk assessment
+- Update mitigation strategies
+- Add newly discovered risks
+- Remove resolved risks
+
+### Open Questions
+
+1. Should we support importing existing STL files for editing?
+2. What's the maximum model complexity we should support?
+3. Should we implement auto-save? How frequently?
+4. Do we need cloud backup, or is local storage sufficient?
+5. Should we support stylus input (S-Pen, Apple Pencil)?
+6. What's the minimum viable tutorial/onboarding?
+7. Should we support landscape-only mode for tablets?
+8. Do we need a "gallery" view of saved models?
+9. Should exported STLs include metadata (app version, creation date)?
+10. What analytics/crash reporting should we implement?
+
 ## Future Enhancements
 
 - Additional tools: Smooth, Flatten, Pinch
@@ -2195,3 +2455,6 @@ sdk.dir=/home/mark/android-sdk
 - Reference image overlay
 - Cloud save/sync
 - Model sharing
+- Import existing STL files
+- Remeshing/topology optimization
+- Multi-material 3D printing support

@@ -2568,8 +2568,46 @@ sdk.dir=/home/mark/android-sdk
 6. What's the minimum viable tutorial/onboarding?
 7. ~~Should we support landscape-only mode for tablets?~~ **DECIDED: Both portrait and landscape**
 8. ~~Do we need a "gallery" view of saved models?~~ **DECIDED: No, simple list in load dialog**
-9. Should exported STLs include metadata (app version, creation date)?
+9. ~~Should exported STLs include metadata (app version, creation date)?~~ **DECIDED: Yes, in 80-byte header**
 10. ~~What analytics/crash reporting should we implement?~~ **DECIDED: ACRA crash reporting, no analytics**
+
+### STL Metadata
+
+**What is STL Metadata?**
+Additional information embedded in STL files beyond 3D geometry.
+
+**Available Metadata Spaces:**
+
+1. **Header (80 bytes)** - Only official metadata space:
+   ```
+   "ClayModeler v1.0 - Model_001                                               "
+   ```
+   Can include: app name, version, model name, date, author
+
+2. **Attribute Bytes (2 bytes per triangle)** - Usually 0x0000:
+   - Some software uses for color (RGB)
+   - Material properties
+   - Layer information
+   - We use: 0x0000 (standard)
+
+3. **ASCII STL Comments** - Only in ASCII format:
+   ```
+   solid ClayModeler_Model_001
+     ; Created: 2024-03-07
+     ; App: ClayModeler v1.0
+   ```
+
+**Our Implementation:**
+- Header includes: "ClayModeler v1.0 - [model_name]"
+- Attribute bytes: 0x0000 (standard)
+- ASCII format (debug only): Can include comments
+
+**Rationale:**
+- 80 bytes is limited space
+- Most slicing software ignores metadata
+- Not standardized across tools
+- Full metadata available in original .clay file
+- Simple approach is sufficient
 
 ### Decided Requirements
 

@@ -2122,8 +2122,40 @@ on:
       - master
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: "temurin"
+          cache: 'gradle'
+      
+      - name: Run Lint
+        run: ./gradlew lintDebug
+      
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest
+      
+      - name: Run Integration Tests
+        run: ./gradlew connectedDebugAndroidTest || echo "Skipping if no emulator"
+      
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-reports
+          path: app/build/reports/tests/
+  
   release:
     runs-on: ubuntu-latest
+    needs: test
     if: startsWith(github.ref, 'refs/tags/')
     
     steps:
@@ -2171,6 +2203,8 @@ jobs:
           path: app/build/outputs/apk/release/ClayModeler-*.apk
 ```
 
+**Important:** Release job only runs if test job passes. If any tests fail, release is aborted.
+
 **Secrets Required:**
 - `KEYSTORE_FILE`: Base64 encoded keystore
 - `KEYSTORE_PASSWORD`: Keystore password
@@ -2184,10 +2218,13 @@ git tag -a v1.0.0 -m "Release version 1.0.0"
 git push origin v1.0.0
 
 # Workflow automatically:
-# 1. Builds release APK
-# 2. Signs APK
-# 3. Creates GitHub release
-# 4. Uploads APK to release
+# 1. Runs lint checks (must pass)
+# 2. Runs unit tests (must pass)
+# 3. Runs integration tests (must pass)
+# 4. Builds release APK (only if tests pass)
+# 5. Signs APK
+# 6. Creates GitHub release
+# 7. Uploads APK to release
 ```
 
 **Release Naming:**

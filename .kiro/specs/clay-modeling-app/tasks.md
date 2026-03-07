@@ -397,15 +397,86 @@
 
 **Expected Outcome:** Crash reports saved locally
 
-### Task 9.4: Documentation
-- [ ] Write README.md with app description
-- [ ] Add build instructions
-- [ ] Document file formats
-- [ ] Create user guide (basic usage)
-- [ ] Add LICENSE file
-- [ ] Add PRIVACY.md (no data collection)
+### Task 9.4: README.md Creation
+- [ ] Create comprehensive README.md
+- [ ] Add app title and description
+- [ ] Add features list with icons/emojis
+- [ ] Include screenshots (main screen, tools, export dialog)
+- [ ] Add animated GIF of sculpting in action
+- [ ] Document system requirements (Android 8.0+)
+- [ ] Add installation instructions (GitHub releases, F-Droid)
+- [ ] Document build instructions:
+  - Prerequisites (Android SDK, Java 21)
+  - Clone repository
+  - Build debug APK: `./gradlew assembleDebug`
+  - Run tests: `./gradlew testDebugUnitTest`
+  - Build release: `./gradlew assembleRelease`
+- [ ] Add usage guide:
+  - Getting started (create new model)
+  - Tool descriptions (Remove, Add, Pull, View)
+  - Camera controls (rotate, zoom, pan)
+  - Saving and loading models
+  - Exporting to STL
+- [ ] Document file formats (.clay and .stl)
+- [ ] Add release procedure:
+  - Update version in build.gradle.kts
+  - Update CHANGELOG.md
+  - Commit changes
+  - Create tag: `git tag -a v1.0.0 -m "Release 1.0.0"`
+  - Push tag: `git push origin v1.0.0`
+  - GitHub Actions builds and creates release
+  - Download APK from releases
+  - Test release APK
+  - Announce release
+- [ ] Add contributing guidelines (if open source)
+- [ ] Add troubleshooting section
+- [ ] Add FAQ section
+- [ ] Include links to issues and discussions
+- [ ] Add badges (build status, license, version)
 
-**Expected Outcome:** Project is documented
+**Expected Outcome:** Comprehensive README with screenshots and complete documentation
+
+### Task 9.4a: LICENSE File
+- [ ] Create LICENSE file with MIT License
+- [ ] Add copyright year and author name
+- [ ] Verify MIT license text is complete
+- [ ] Reference LICENSE in README.md
+- [ ] Add license header to source files (optional)
+
+**Expected Outcome:** Project has MIT license
+
+### Task 9.4b: PRIVACY.md
+- [ ] Create PRIVACY.md file
+- [ ] State no data collection policy
+- [ ] Explain local-only storage
+- [ ] Document ACRA crash reporting (local, user-controlled)
+- [ ] State no internet connectivity required
+- [ ] Explain file permissions usage
+- [ ] Add GDPR compliance statement
+
+**Expected Outcome:** Privacy policy documented
+
+### Task 9.4c: CHANGELOG.md
+- [ ] Create CHANGELOG.md file
+- [ ] Use Keep a Changelog format
+- [ ] Add sections: Added, Changed, Fixed, Removed
+- [ ] Document initial release (v1.0.0)
+- [ ] Update for each release
+
+**Expected Outcome:** Change history tracked
+
+### Task 9.4d: Screenshots and Media
+- [ ] Take screenshot of main screen (portrait)
+- [ ] Take screenshot of main screen (landscape)
+- [ ] Take screenshot of tool in action
+- [ ] Take screenshot of save dialog
+- [ ] Take screenshot of export dialog
+- [ ] Record GIF of sculpting workflow (10-15 seconds)
+- [ ] Optimize images for web (compress)
+- [ ] Add to `docs/screenshots/` directory
+- [ ] Reference in README.md
+
+**Expected Outcome:** Visual documentation of app
 
 ### Task 9.5: Menu Implementation
 - [ ] Create navigation drawer or popup menu
@@ -511,18 +582,29 @@
 - [ ] Create `.github/workflows/android-ci.yml`
 - [ ] Configure Gradle wrapper validation
 - [ ] Add build job (assembleDebug)
-- [ ] Add lint job (lintDebug)
-- [ ] Add test job (testDebugUnitTest)
+- [ ] Add lint job (lintDebug) - must pass
+- [ ] Add unit test job (testDebugUnitTest) - must pass
+- [ ] Add integration test job (if Robolectric-based)
+- [ ] Configure test failure to fail build
 - [ ] Add coverage reporting (Jacoco)
+- [ ] Upload test reports as artifacts
+- [ ] Upload coverage report as artifacts
 - [ ] Upload APK artifact
-- [ ] Test CI pipeline
+- [ ] Configure to run on push and pull requests
+- [ ] Test CI pipeline with intentional test failure
+- [ ] Verify build fails when tests fail
+- [ ] Test CI pipeline with successful build
 
-**Expected Outcome:** CI pipeline runs on push/PR
+**Expected Outcome:** CI pipeline runs tests and fails build on test failures
 
 ### Task 9.15: Release Workflow
 - [ ] Create `.github/workflows/release.yml`
-- [ ] Configure trigger on tag push (v*)
-- [ ] Add release APK build job
+- [ ] Configure trigger on tag push (v*) to master
+- [ ] Add lint check job (must pass)
+- [ ] Add unit test job (must pass)
+- [ ] Add integration test job (must pass)
+- [ ] Fail release if any tests fail
+- [ ] Add release APK build job (after tests pass)
 - [ ] Configure APK signing with GitHub secrets
 - [ ] Rename APK with version number
 - [ ] Create GitHub release automatically
@@ -530,8 +612,9 @@
 - [ ] Add release notes generation
 - [ ] Test workflow with test tag
 - [ ] Document release process in README
+- [ ] Document required GitHub secrets
 
-**Expected Outcome:** Tagged commits automatically create GitHub releases with APK
+**Expected Outcome:** Tagged commits run all tests then create GitHub releases with APK
 
 ## Phase 10: Release Preparation
 
@@ -594,7 +677,7 @@
 
 ## Summary
 
-**Total Tasks:** ~121
+**Total Tasks:** ~125
 **Estimated Duration:** 8-10 weeks
 **Team Size:** 1 developer
 
@@ -614,7 +697,13 @@
 - Phase 3: Tool cursor implementation (1 task)
 - Phase 6: Thumbnail generation (1 task)
 - Phase 7: ASCII STL export (1 task)
-- Phase 9: Menu, navigation, UI polish (9 tasks)
+- Phase 9: Menu, navigation, UI polish, documentation (13 tasks)
+  - Expanded Task 9.4 into 9.4, 9.4a, 9.4b, 9.4c, 9.4d
+  - Comprehensive README with screenshots and release procedure
+  - MIT LICENSE file
+  - PRIVACY.md and CHANGELOG.md
+  - CI/CD with mandatory test passing
+  - Release workflow with test gates
 - Phase 10: Proguard, signing, final polish (3 tasks)
 
 **Coverage:**
@@ -623,3 +712,5 @@
 - All acceptance criteria: ✅ 100%
 - UI/UX details: ✅ 100%
 - Release preparation: ✅ 100%
+- Documentation: ✅ 100%
+- CI/CD with tests: ✅ 100%

@@ -327,6 +327,364 @@ Units:
 - User can specify scale in export dialog
 ```
 
+**STL Export Implementation:**
+
+**Step 1: Pre-Export Validation**
+```kotlin
+fun validateMeshForExport(model: ClayModel): ValidationResult {
+    // Check if mesh is manifold (watertight)
+    if (!isManifold(model)) {
+        return ValidationResult.Warning("Mesh has holes, may not print correctly")
+    }
+    
+    // Check for degenerate triangles
+    val degenerateCount = countDegenerateTriangles(model)
+    if (degenerateCount > 0) {
+        return ValidationResult.Warning("$degenerateCount degenerate triangles will be skipped")
+    }
+    
+    // Check normal orientation
+    if (!allNormalsOutward(model)) {
+        return ValidationResult.Warning("Some normals face inward, will be flipped")
+    }
+    
+    return ValidationResult.Success
+}
+```
+
+**Step 2: Coordinate System Conversion**
+```
+App Coordinate System (OpenGL):
+- Right-handed
+- Y-up (vertical)
+- Z-forward (toward camera)
+
+3D Printing Coordinate System (Standard):
+- Right-handed
+- Z-up (vertical)
+- Y-forward
+
+Conversion Matrix:
+[x']   [1  0  0] [x]
+[y'] = [0  0  1] [y]
+[z']   [0 -1  0] [z]
+
+In code:
+newX = oldX
+newY = oldZ
+newZ = -oldY
+```
+
+**Step 3: Scale to Millimeters**
+```kotlin
+fun scaleToMillimeters(model: ClayModel, targetSize: Float): ClayModel {
+    // Calculate current bounding box
+    val bounds = model.getBounds()
+    val currentSize = max(bounds.width, bounds.height, bounds.depth)
+    
+    // Calculate scale factor
+    val scaleFactor = targetSize / currentSize
+    
+    // Apply scale to all vertices
+    return model.transform { vertex ->
+        vertex * scaleFactor
+    }
+}
+
+// Default: 100mm diameter
+// User options: 50mm, 100mm, 150mm, 200mm, Custom
+```
+
+**Step 4: Calculate Face Normals**
+```kotlin
+fun calculateFaceNormal(v1: Vector3, v2: Vector3, v3: Vector3): Vector3 {
+    // Calculate edges
+    val edge1 = v2 - v1
+    val edge2 = v3 - v1
+    
+    // Cross product (right-hand rule)
+    val normal = edge1.cross(edge2)
+    
+    // Normalize to unit vector
+    return normal.normalize()
+}
+
+// Ensure counter-clockwise winding (outward-facing)
+fun ensureCorrectWinding(v1: Vector3, v2: Vector3, v3: Vector3, 
+                         expectedNormal: Vector3): Triple<Vector3, Vector3, Vector3> {
+    val calculatedNormal = calculateFaceNormal(v1, v2, v3)
+    
+    // If normal points inward, reverse winding order
+    if (calculatedNormal.dot(expectedNormal) < 0) {
+        return Triple(v1, v3, v2)  // Swap v2 and v3
+    }
+    
+    return Triple(v1, v2, v3)
+}
+```
+
+**Step 5: Write Binary STL**
+```kotlin
+fun exportSTL(model: ClayModel, outputPath: String, scale: Float) {
+    val file = File(outputPath)
+    val output = DataOutputStream(BufferedOutputStream(FileOutputStream(file)))
+    
+    try {
+        // 1. Write header (80 bytes)
+        val header = "ClayModeler v1.0 - ${model.name}".padEnd(80, ' ')
+        output.write(header.toByteArray(Charsets.US_ASCII), 0, 80)
+        
+        // 2. Count valid triangles (skip degenerate)
+        val validFaces = model.faces.filter { !isDegenerate(it) }
+        output.writeInt(validFaces.size.toLittleEndian())
+        
+        // 3. Write each triangle
+        for (face in validFaces) {
+            // Get vertices
+            val v1 = model.vertices[face.v1]
+            val v2 = model.vertices[face.v2]
+            val v3 = model.vertices[face.v3]
+            
+            // Convert coordinate system
+            val v1Conv = convertCoordinates(v1)
+            val v2Conv = convertCoordinates(v2)
+            val v3Conv = convertCoordinates(v3)
+            
+            // Scale to millimeters
+            val v1Scaled = v1Conv * scale
+            val v2Scaled = v2Conv * scale
+            val v3Scaled = v3Conv * scale
+            
+            // Calculate normal
+            val normal = calculateFaceNormal(v1Scaled, v2Scaled, v3Scaled)
+            
+            // Ensure correct winding
+            val (v1Final, v2Final, v3Final) = ensureCorrectWinding(
+                v1Scaled, v2Scaled, v3Scaled, normal
+            )
+            
+            // Write normal (12 bytes)
+            output.writeFloat(normal.x.toLittleEndian())
+            output.writeFloat(normal.y.toLittleEndian())
+            output.writeFloat(normal.z.toLittleEndian())
+            
+            // Write vertices (36 bytes)
+            writeVertex(output, v1Final)
+            writeVertex(output, v2Final)
+            writeVertex(output, v3Final)
+            
+            // Write attribute (2 bytes, unused)
+            output.writeShort(0)
+        }
+        
+        output.flush()
+        
+    } finally {
+        output.close()
+    }
+}
+
+fun writeVertex(output: DataOutputStream, v: Vector3) {
+    output.writeFloat(v.x.toLittleEndian())
+    output.writeFloat(v.y.toLittleEndian())
+    output.writeFloat(v.z.toLittleEndian())
+}
+
+// STL uses little-endian byte order
+fun Int.toLittleEndian(): Int = Integer.reverseBytes(this)
+fun Float.toLittleEndian(): Float = Float.fromBits(Integer.reverseBytes(this.toBits()))
+```
+
+**Step 6: Progress Tracking**
+```kotlin
+suspend fun exportSTLWithProgress(
+    model: ClayModel, 
+    outputPath: String, 
+    scale: Float,
+    onProgress: (Int) -> Unit
+): Result<String> = withContext(Dispatchers.IO) {
+    try {
+        val totalFaces = model.faces.size
+        var processedFaces = 0
+        
+        // ... write header and count ...
+        
+        for (face in model.faces) {
+            // ... write triangle ...
+            
+            processedFaces++
+            if (processedFaces % 100 == 0) {
+                val progress = (processedFaces * 100) / totalFaces
+                withContext(Dispatchers.Main) {
+                    onProgress(progress)
+                }
+            }
+        }
+        
+        Result.success(outputPath)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+}
+```
+
+**Step 7: Save to Downloads (Android 10+)**
+```kotlin
+fun saveToDownloads(context: Context, fileName: String, data: ByteArray): Uri? {
+    val resolver = context.contentResolver
+    val contentValues = ContentValues().apply {
+        put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+        put(MediaStore.MediaColumns.MIME_TYPE, "application/sla")
+        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+    }
+    
+    val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+    
+    uri?.let {
+        resolver.openOutputStream(it)?.use { output ->
+            output.write(data)
+        }
+    }
+    
+    return uri
+}
+```
+
+**Export Dialog Options:**
+
+```
+┌─────────────────────────────────┐
+│  Export STL                     │
+│                                 │
+│  File Name:                     │
+│  [Model_001________________]    │
+│                                 │
+│  Size:                          │
+│  ○ 50mm   ● 100mm   ○ 150mm     │
+│  ○ 200mm  ○ Custom: [___]mm     │
+│                                 │
+│  Quality:                       │
+│  ○ Low (Fast)                   │
+│  ● Medium (Recommended)         │
+│  ○ High (Slow, large file)      │
+│                                 │
+│  Options:                       │
+│  ☑ Validate mesh                │
+│  ☑ Fix normals                  │
+│  ☐ ASCII format (debug)         │
+│                                 │
+│  [CANCEL]         [EXPORT]      │
+└─────────────────────────────────┘
+```
+
+**Quality Settings:**
+- Low: Skip validation, faster export
+- Medium: Basic validation, fix obvious issues
+- High: Full validation, repair mesh if possible
+
+**Mesh Validation:**
+
+```kotlin
+fun isManifold(model: ClayModel): Boolean {
+    // Check if every edge is shared by exactly 2 faces
+    val edgeCount = mutableMapOf<Edge, Int>()
+    
+    for (face in model.faces) {
+        val edges = listOf(
+            Edge(face.v1, face.v2),
+            Edge(face.v2, face.v3),
+            Edge(face.v3, face.v1)
+        )
+        
+        for (edge in edges) {
+            edgeCount[edge] = edgeCount.getOrDefault(edge, 0) + 1
+        }
+    }
+    
+    // All edges should be shared by exactly 2 faces
+    return edgeCount.values.all { it == 2 }
+}
+
+fun isDegenerate(face: Face, vertices: List<Vector3>): Boolean {
+    val v1 = vertices[face.v1]
+    val v2 = vertices[face.v2]
+    val v3 = vertices[face.v3]
+    
+    // Check if vertices are collinear or coincident
+    val edge1 = v2 - v1
+    val edge2 = v3 - v1
+    val cross = edge1.cross(edge2)
+    
+    // If cross product is near zero, triangle is degenerate
+    return cross.length() < 0.0001f
+}
+
+fun allNormalsOutward(model: ClayModel): Boolean {
+    val center = model.getCenter()
+    
+    for (face in model.faces) {
+        val v1 = model.vertices[face.v1]
+        val v2 = model.vertices[face.v2]
+        val v3 = model.vertices[face.v3]
+        
+        val faceCenter = (v1 + v2 + v3) / 3.0f
+        val normal = calculateFaceNormal(v1, v2, v3)
+        val toCenter = center - faceCenter
+        
+        // Normal should point away from center
+        if (normal.dot(toCenter) > 0) {
+            return false
+        }
+    }
+    
+    return true
+}
+```
+
+**ASCII STL Option (Debug):**
+
+```
+solid ClayModeler_Model_001
+  facet normal 0.0 0.0 1.0
+    outer loop
+      vertex 0.0 0.0 0.0
+      vertex 1.0 0.0 0.0
+      vertex 0.0 1.0 0.0
+    endloop
+  endfacet
+  ...
+endsolid ClayModeler_Model_001
+```
+
+- Human-readable format
+- Larger file size (3-5x)
+- Useful for debugging geometry issues
+- Not recommended for production use
+
+**Error Handling:**
+
+```kotlin
+sealed class ExportError {
+    object InsufficientStorage : ExportError()
+    object PermissionDenied : ExportError()
+    data class InvalidMesh(val issues: List<String>) : ExportError()
+    data class IOError(val message: String) : ExportError()
+}
+
+fun handleExportError(error: ExportError) {
+    when (error) {
+        is ExportError.InsufficientStorage -> 
+            showError("Not enough storage space")
+        is ExportError.PermissionDenied -> 
+            showError("Storage permission required")
+        is ExportError.InvalidMesh -> 
+            showWarning("Mesh issues: ${error.issues.joinToString()}")
+        is ExportError.IOError -> 
+            showError("Export failed: ${error.message}")
+    }
+}
+```
+
 **Storage Locations:**
 
 ```
@@ -382,15 +740,23 @@ External Storage (Public):
 8. Rebuild octree for spatial queries
 
 **Export STL:**
-1. Calculate face normals from vertices
-2. Write STL header
-3. Write triangle count
-4. For each face:
-   - Calculate normal vector
-   - Write normal and 3 vertices
-   - Write attribute bytes
-5. Flush to disk
-6. Notify user of file location
+1. Validate mesh (manifold check, degenerate triangles)
+2. Convert coordinate system (Y-up to Z-up)
+3. Scale to millimeters (user-specified size)
+4. Calculate face normals from vertices
+5. Ensure correct winding order (counter-clockwise)
+6. Write STL header (80 bytes)
+7. Write triangle count (4 bytes, little-endian)
+8. For each face:
+   - Skip if degenerate
+   - Calculate and normalize normal vector
+   - Convert coordinates and scale vertices
+   - Write normal (12 bytes, little-endian float32)
+   - Write 3 vertices (36 bytes, little-endian float32)
+   - Write attribute bytes (2 bytes, 0x0000)
+9. Flush to disk with progress updates
+10. Save to Downloads using MediaStore API
+11. Notify user of file location and any warnings
 
 **Error Handling:**
 

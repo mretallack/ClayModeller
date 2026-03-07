@@ -160,31 +160,210 @@ OpenGL ES 3.0 renderer for 3D visualization.
 
 Handles model persistence and export.
 
-**Save Format (Custom Binary):**
-```
-Header:
-- Magic number: "CLAY" (4 bytes)
-- Version: 1 (4 bytes)
-- Vertex count (4 bytes)
-- Face count (4 bytes)
+**Save Format (Custom Binary - .clay):**
 
-Data:
-- Vertices: [x, y, z] * count (float32)
-- Faces: [v1, v2, v3] * count (int32)
+The app uses a custom binary format optimized for fast loading and compact storage.
+
 ```
+File Structure:
+┌─────────────────────────────────────────┐
+│ Header (32 bytes)                       │
+├─────────────────────────────────────────┤
+│ Metadata (variable)                     │
+├─────────────────────────────────────────┤
+│ Vertex Data (variable)                  │
+├─────────────────────────────────────────┤
+│ Face Data (variable)                    │
+├─────────────────────────────────────────┤
+│ Normal Data (variable)                  │
+└─────────────────────────────────────────┘
+
+Header (32 bytes):
+- Magic number: "CLAY" (4 bytes, ASCII)
+- Version: 1 (4 bytes, uint32)
+- Vertex count (4 bytes, uint32)
+- Face count (4 bytes, uint32)
+- Metadata length (4 bytes, uint32)
+- Checksum (4 bytes, CRC32)
+- Reserved (8 bytes, for future use)
+
+Metadata (variable length, JSON):
+{
+  "name": "Model_001",
+  "created": "2024-03-07T15:30:00Z",
+  "modified": "2024-03-07T16:45:00Z",
+  "app_version": "1.0.0",
+  "subdivision_level": 3,
+  "bounds": {
+    "min": [-1.0, -1.0, -1.0],
+    "max": [1.0, 1.0, 1.0]
+  }
+}
+
+Vertex Data:
+- Format: [x, y, z] * vertex_count
+- Type: float32 (4 bytes each)
+- Total size: vertex_count * 12 bytes
+- Coordinate system: Right-handed, Y-up
+- Units: Arbitrary (normalized to unit sphere initially)
+
+Face Data:
+- Format: [v1, v2, v3] * face_count
+- Type: uint32 (4 bytes each)
+- Total size: face_count * 12 bytes
+- Winding order: Counter-clockwise (front-facing)
+- Indices: Zero-based vertex indices
+
+Normal Data:
+- Format: [nx, ny, nz] * vertex_count
+- Type: float32 (4 bytes each)
+- Total size: vertex_count * 12 bytes
+- Normalized: All normals are unit vectors
+- Per-vertex normals for smooth shading
+```
+
+**File Size Estimation:**
+```
+Example for default sphere (3 subdivisions):
+- Vertices: ~1,280
+- Faces: ~2,560
+
+Size calculation:
+- Header: 32 bytes
+- Metadata: ~200 bytes (JSON)
+- Vertices: 1,280 * 12 = 15,360 bytes
+- Faces: 2,560 * 12 = 30,720 bytes
+- Normals: 1,280 * 12 = 15,360 bytes
+- Total: ~61.7 KB
+
+Highly detailed model (50,000 vertices):
+- Total: ~2.4 MB
+```
+
+**Compression (Future Enhancement):**
+- Optional zlib compression
+- File extension: .clay.gz
+- Reduces size by 60-80% for typical models
+- Trade-off: Slightly slower load times
 
 **STL Export:**
-- Binary STL format
-- 80-byte header
-- Triangle count (4 bytes)
-- For each triangle:
-  - Normal vector (12 bytes)
-  - 3 vertices (36 bytes)
-  - Attribute byte count (2 bytes)
+
+Standard binary STL format for 3D printing compatibility.
+
+```
+Binary STL Structure:
+┌─────────────────────────────────────────┐
+│ Header (80 bytes)                       │
+├─────────────────────────────────────────┤
+│ Triangle count (4 bytes)                │
+├─────────────────────────────────────────┤
+│ Triangle 1 (50 bytes)                   │
+│   - Normal (12 bytes)                   │
+│   - Vertex 1 (12 bytes)                 │
+│   - Vertex 2 (12 bytes)                 │
+│   - Vertex 3 (12 bytes)                 │
+│   - Attribute (2 bytes)                 │
+├─────────────────────────────────────────┤
+│ Triangle 2 (50 bytes)                   │
+│ ...                                     │
+└─────────────────────────────────────────┘
+
+Header (80 bytes):
+- ASCII text: "ClayModeler v1.0 - [model_name]"
+- Padded with spaces to 80 bytes
+
+Triangle Data:
+- Normal: [nx, ny, nz] (float32)
+- Vertex 1: [x, y, z] (float32)
+- Vertex 2: [x, y, z] (float32)
+- Vertex 3: [x, y, z] (float32)
+- Attribute: 0x0000 (unused, 2 bytes)
+
+Units:
+- Millimeters (standard for 3D printing)
+- Default scale: 100mm diameter sphere
+- User can specify scale in export dialog
+```
 
 **Storage Locations:**
-- Internal storage: `/data/data/com.claymodeler/files/models/`
-- STL exports: `/storage/emulated/0/Download/`
+
+```
+Internal Storage (Private):
+/data/data/com.claymodeler/files/
+├── models/
+│   ├── Model_001.clay
+│   ├── Model_002.clay
+│   └── autosave.clay
+├── thumbnails/
+│   ├── Model_001.png (128x128)
+│   └── Model_002.png (128x128)
+└── cache/
+    └── temp_export.stl
+
+External Storage (Public):
+/storage/emulated/0/
+├── Download/
+│   ├── Model_001.stl
+│   └── Model_002.stl
+└── Documents/ClayModeler/
+    ├── Model_001.clay (optional backup)
+    └── Model_002.clay
+```
+
+**Storage Management:**
+
+- Internal models: Managed by app, deleted on uninstall
+- Thumbnails: Auto-generated on save (128x128 PNG)
+- Autosave: Every 5 minutes, single file (overwritten)
+- STL exports: Saved to Downloads, persist after uninstall
+- Cache: Cleared on app exit
+
+**File Operations:**
+
+**Save:**
+1. Serialize model to binary format
+2. Calculate CRC32 checksum
+3. Write to temporary file
+4. Verify write success
+5. Rename to final filename (atomic operation)
+6. Generate thumbnail (async)
+7. Update metadata index
+
+**Load:**
+1. Read header and validate magic number
+2. Verify version compatibility
+3. Validate checksum
+4. Read metadata
+5. Allocate buffers for vertex/face/normal data
+6. Read data in chunks (for large files)
+7. Reconstruct ClayModel object
+8. Rebuild octree for spatial queries
+
+**Export STL:**
+1. Calculate face normals from vertices
+2. Write STL header
+3. Write triangle count
+4. For each face:
+   - Calculate normal vector
+   - Write normal and 3 vertices
+   - Write attribute bytes
+5. Flush to disk
+6. Notify user of file location
+
+**Error Handling:**
+
+- Corrupted file: Show error, offer to delete
+- Version mismatch: Attempt migration or reject
+- Insufficient storage: Warn before save
+- Write failure: Retry once, then show error
+- Checksum mismatch: File corrupted, cannot load
+
+**Backup & Sync (Future Enhancement):**
+
+- Cloud backup to Google Drive
+- Export/import via share intent
+- Automatic backup on save
+- Conflict resolution for synced files
 
 ### 5. ModelingViewModel
 

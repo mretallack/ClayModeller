@@ -280,14 +280,29 @@ To determine where the user touched on the 3D model:
 
 ## Technology Stack
 
-- **Language:** Kotlin
+- **Language:** Kotlin 2.2.20
 - **Min SDK:** 26 (Android 8.0)
-- **Target SDK:** 34 (Android 14)
+- **Target SDK:** 36 (Android 14)
+- **Compile SDK:** 36
 - **Graphics:** OpenGL ES 3.0
 - **Architecture:** MVVM with LiveData
-- **Build System:** Gradle with Kotlin DSL
-- **Testing:** JUnit 5, MockK, Robolectric
+- **Build System:** Gradle 8.13.0 with Kotlin DSL
+- **Java Version:** 21 (OpenJDK)
+- **Testing:** Kotest (JUnit 5), MockK, Robolectric
 - **CI/CD:** GitHub Actions
+
+## Development Environment
+
+**Local Setup:**
+- Android SDK: `/home/mark/android-sdk/`
+- Java: OpenJDK 21.0.10
+- Gradle: Wrapper-based (./gradlew)
+- Build tools, platforms, and licenses configured
+
+**Project Structure:**
+- Root: `/home/mark/git/ClayModeler/`
+- Multi-module support (app module primary)
+- Gradle Kotlin DSL for all build files
 
 ## Dependencies
 
@@ -429,86 +444,163 @@ fun assertFileFormatValid(file: File)
 
 **File:** `.github/workflows/android-ci.yml`
 
+**Environment:**
+- Runner: `ubuntu-latest`
+- Java: OpenJDK 21 (Temurin distribution)
+- Gradle cache enabled
+
 **Triggers:**
 - Push to main/master branch
 - Pull requests to main/master
 - Manual workflow dispatch
+- Ignore paths: README.md, docs, meta files
 
 **Jobs:**
 
-**1. Lint Check**
+**1. Validate Gradle Wrapper**
 ```yaml
-- name: Run Kotlin Lint
-  run: ./gradlew ktlintCheck
+- name: Validate Gradle wrapper
+  uses: gradle/actions/wrapper-validation@v5
 ```
 
-**2. Build**
+**2. Setup Environment**
 ```yaml
-- name: Build Debug APK
-  run: ./gradlew assembleDebug
-```
-
-**3. Unit Tests**
-```yaml
-- name: Run Unit Tests
-  run: ./gradlew testDebugUnitTest
+- name: Check out repository
+  uses: actions/checkout@v4
   
-- name: Generate Coverage Report
-  run: ./gradlew jacocoTestReport
+- name: Set up Java JDK
+  uses: actions/setup-java@v4
+  with:
+    java-version: 21
+    distribution: "temurin"
+    cache: 'gradle'
 ```
 
-**4. Integration Tests**
+**3. Build and Test**
 ```yaml
-- name: Run Integration Tests
-  run: ./gradlew connectedDebugAndroidTest
-  # Note: Requires emulator or uses Robolectric
+- name: Build and test
+  run: ./gradlew assembleDebug lintDebug testDebugUnitTest --stacktrace
 ```
 
-**5. Upload Artifacts**
+**4. Upload Artifacts**
 ```yaml
+- name: Upload APK
+  uses: actions/upload-artifact@v6
+  with:
+    name: app
+    path: app/build/outputs/apk/debug/*.apk
+    
 - name: Upload Test Reports
-  uses: actions/upload-artifact@v3
+  if: always()
+  uses: actions/upload-artifact@v6
   with:
     name: test-reports
-    path: app/build/reports/
+    path: app/build/reports/tests/
     
-- name: Upload Coverage Report
-  uses: actions/upload-artifact@v3
+- name: Upload Lint Reports
+  if: always()
+  uses: actions/upload-artifact@v6
+  with:
+    name: lint-reports
+    path: app/build/reports/lint/
+```
+
+**5. Coverage (Optional)**
+```yaml
+- name: Generate Coverage Report
+  run: ./gradlew jacocoTestReport
+  
+- name: Upload Coverage
+  uses: actions/upload-artifact@v6
   with:
     name: coverage-report
     path: app/build/reports/jacoco/
 ```
 
-**6. Coverage Check**
-```yaml
-- name: Check Coverage Threshold
-  run: |
-    ./gradlew jacocoTestCoverageVerification
-  # Fails if coverage < 80%
-```
-
 ### Build Configuration
 
-**build.gradle.kts additions:**
+**build.gradle.kts (Project level):**
 
 ```kotlin
 plugins {
+    alias(libs.plugins.com.android.application) apply false
+    alias(libs.plugins.org.jetbrains.kotlin.android) apply false
+}
+```
+
+**build.gradle.kts (App module):**
+
+```kotlin
+plugins {
+    alias(libs.plugins.com.android.application)
+    alias(libs.plugins.org.jetbrains.kotlin.android)
     id("jacoco")
-    id("org.jlleitschuh.gradle.ktlint") version "11.6.1"
+}
+
+android {
+    namespace = "com.claymodeler"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "com.claymodeler"
+        minSdk = 26
+        targetSdk = 36
+        versionCode = 1
+        versionName = "1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        debug {
+            enableUnitTestCoverage = true
+        }
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    kotlinOptions {
+        jvmTarget = "21"
+    }
+
+    buildFeatures {
+        viewBinding = true
+    }
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }
 
 jacoco {
     toolVersion = "0.8.11"
 }
 
-tasks.jacocoTestReport {
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+    
     reports {
         xml.required.set(true)
         html.required.set(true)
     }
+    
+    sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
+    classDirectories.setFrom(files("build/tmp/kotlin-classes/debug"))
+    executionData.setFrom(files("build/jacoco/testDebugUnitTest.exec"))
 }
 
-tasks.jacocoTestCoverageVerification {
+tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn("jacocoTestReport")
+    
     violationRules {
         rule {
             limit {
@@ -517,32 +609,84 @@ tasks.jacocoTestCoverageVerification {
         }
     }
 }
-
-ktlint {
-    android.set(true)
-    ignoreFailures.set(false)
-}
 ```
 
-### Lint Configuration
+**settings.gradle.kts:**
 
-**ktlint rules:**
-- Standard Kotlin style guide
-- Android-specific rules
-- Max line length: 120 characters
-- No wildcard imports
-- Consistent indentation
+```kotlin
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
 
-### Pre-commit Hooks (Optional)
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
 
-```bash
-#!/bin/bash
-# .git/hooks/pre-commit
-./gradlew ktlintCheck
-if [ $? -ne 0 ]; then
-    echo "Lint check failed. Run ./gradlew ktlintFormat to fix."
-    exit 1
-fi
+rootProject.name = "ClayModeler"
+include(":app")
+```
+
+**gradle/libs.versions.toml:**
+
+```toml
+[versions]
+kotlin = "2.2.20"
+gradle = "8.13.0"
+appcompat = "1.7.1"
+lifecycle = "2.7.0"
+opengl = "1.0.0"
+documentfile = "1.0.1"
+kotest = "6.0.3"
+mockk = "1.13.8"
+robolectric = "4.11.1"
+androidxTest = "1.7.0"
+espresso = "3.5.1"
+coroutines = "1.7.3"
+jacoco = "0.8.11"
+minSdk = "26"
+targetSdk = "36"
+compileSdk = "36"
+java = "21"
+
+[libraries]
+androidx-core-ktx = { module = "androidx.core:core-ktx", version = "1.12.0" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+material = { module = "com.google.android.material:material", version = "1.11.0" }
+lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
+lifecycle-livedata-ktx = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "lifecycle" }
+opengl = { module = "androidx.opengl:opengl", version.ref = "opengl" }
+documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentfile" }
+
+# Testing
+kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTest" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version = "1.1.5" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTest" }
+androidx-test-rules = { module = "androidx.test:rules", version.ref = "androidxTest" }
+androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+
+[plugins]
+com-android-application = { id = "com.android.application", version.ref = "gradle" }
+org-jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+```
+
+**local.properties:**
+
+```properties
+sdk.dir=/home/mark/android-sdk
 ```
 
 ## Test Data Management

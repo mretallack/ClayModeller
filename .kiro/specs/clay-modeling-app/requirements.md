@@ -153,6 +153,65 @@ THE SYSTEM SHALL reapply the last undone action
 WHEN there are no actions to undo/redo
 THE SYSTEM SHALL disable the respective button
 
+## Testing Requirements
+
+### Unit Tests
+
+**US-13: Core Logic Testing**
+- As a developer, I want comprehensive unit tests so I can refactor with confidence
+
+WHEN unit tests are executed
+THE SYSTEM SHALL test all ClayModel mesh manipulation methods
+
+WHEN unit tests are executed
+THE SYSTEM SHALL test all Tool implementations (RemoveClayTool, AddClayTool, PullClayTool)
+
+WHEN unit tests are executed
+THE SYSTEM SHALL test FileManager save/load/export functionality
+
+WHEN unit tests are executed
+THE SYSTEM SHALL test ViewModel state management and undo/redo logic
+
+WHEN unit tests are executed
+THE SYSTEM SHALL achieve at least 80% code coverage for business logic
+
+### Integration Tests
+
+**US-14: Workflow Testing**
+- As a developer, I want integration tests so I can verify end-to-end functionality
+
+WHEN integration tests are executed
+THE SYSTEM SHALL test the complete save and load workflow
+
+WHEN integration tests are executed
+THE SYSTEM SHALL test the complete STL export workflow
+
+WHEN integration tests are executed
+THE SYSTEM SHALL test tool application with model state changes
+
+WHEN integration tests are executed
+THE SYSTEM SHALL test undo/redo with multiple operations
+
+### CI/CD Pipeline
+
+**US-15: Automated Quality Checks**
+- As a developer, I want automated CI checks so code quality is maintained
+
+WHEN code is pushed to the repository
+THE SYSTEM SHALL run Kotlin lint checks
+
+WHEN code is pushed to the repository
+THE SYSTEM SHALL run all unit tests
+
+WHEN code is pushed to the repository
+THE SYSTEM SHALL run all integration tests that don't require a physical device
+
+WHEN code is pushed to the repository
+THE SYSTEM SHALL fail the build if any test fails or lint errors exist
+
+WHEN code is pushed to the repository
+THE SYSTEM SHALL generate and upload test coverage reports
+
 ## Non-Functional Requirements
 
 **NFR-1: Performance**
@@ -169,6 +228,18 @@ THE SYSTEM SHALL run on Android 8.0 (API level 26) and above
 WHEN saving models
 THE SYSTEM SHALL compress data to minimize storage usage
 
+**NFR-5: Test Coverage**
+THE SYSTEM SHALL have unit tests covering at least 80% of business logic code
+
+THE SYSTEM SHALL have integration tests for all critical user workflows
+
+**NFR-6: Code Quality**
+WHEN code is committed
+THE SYSTEM SHALL pass all lint checks without errors
+
+WHEN code is pushed to the repository
+THE SYSTEM SHALL pass all CI pipeline tests including unit and integration tests
+
 ## Acceptance Criteria
 
 - User can create a new clay sphere model
@@ -179,3 +250,6 @@ THE SYSTEM SHALL compress data to minimize storage usage
 - User can export models as STL files
 - App maintains smooth performance during modeling
 - Undo/redo functionality works correctly
+- Unit tests achieve 80%+ coverage of business logic
+- Integration tests cover all critical workflows
+- CI pipeline passes all lint and test checks

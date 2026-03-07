@@ -286,6 +286,8 @@ To determine where the user touched on the 3D model:
 - **Graphics:** OpenGL ES 3.0
 - **Architecture:** MVVM with LiveData
 - **Build System:** Gradle with Kotlin DSL
+- **Testing:** JUnit 5, MockK, Robolectric
+- **CI/CD:** GitHub Actions
 
 ## Dependencies
 
@@ -305,8 +307,255 @@ dependencies {
     
     // File I/O
     implementation("androidx.documentfile:documentfile:1.0.1")
+    
+    // Testing
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("org.robolectric:robolectric:4.11.1")
+    testImplementation("androidx.test:core:1.5.0")
+    testImplementation("androidx.test.ext:junit:1.1.5")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("androidx.test:rules:1.5.0")
 }
 ```
+
+## Testing Strategy
+
+### Unit Tests
+
+**Test Coverage Targets:**
+- ClayModel: 90%+ coverage
+- Tool implementations: 90%+ coverage
+- FileManager: 85%+ coverage
+- ModelingViewModel: 85%+ coverage
+- Overall business logic: 80%+ coverage
+
+**ClayModel Tests:**
+```kotlin
+class ClayModelTest {
+    @Test fun `initialize creates sphere with correct vertex count`()
+    @Test fun `applyTool modifies vertices within radius`()
+    @Test fun `applyTool does not modify vertices outside radius`()
+    @Test fun `clone creates independent copy`()
+    @Test fun `getVertices returns correct data format`()
+}
+```
+
+**Tool Tests:**
+```kotlin
+class RemoveClayToolTest {
+    @Test fun `apply moves vertices inward`()
+    @Test fun `apply respects strength parameter`()
+    @Test fun `apply uses smooth falloff`()
+}
+
+class AddClayToolTest {
+    @Test fun `apply moves vertices outward`()
+    @Test fun `apply blends smoothly with surface`()
+}
+
+class PullClayToolTest {
+    @Test fun `apply moves vertices in drag direction`()
+    @Test fun `apply maintains surface smoothness`()
+}
+```
+
+**FileManager Tests:**
+```kotlin
+class FileManagerTest {
+    @Test fun `saveModel writes valid file format`()
+    @Test fun `loadModel reads saved file correctly`()
+    @Test fun `loadModel handles corrupted files`()
+    @Test fun `exportSTL creates valid STL format`()
+    @Test fun `exportSTL handles empty model`()
+}
+```
+
+**ViewModel Tests:**
+```kotlin
+class ModelingViewModelTest {
+    @Test fun `applyTool updates model state`()
+    @Test fun `applyTool adds to undo stack`()
+    @Test fun `undo restores previous state`()
+    @Test fun `redo reapplies undone action`()
+    @Test fun `undo stack limited to 20 items`()
+    @Test fun `saveModel persists current state`()
+    @Test fun `loadModel updates current state`()
+}
+```
+
+### Integration Tests
+
+**Workflow Tests:**
+```kotlin
+class ModelWorkflowTest {
+    @Test fun `save and load preserves model data`()
+    @Test fun `export STL creates valid file`()
+    @Test fun `multiple tool applications work correctly`()
+    @Test fun `undo redo cycle maintains consistency`()
+}
+```
+
+**Test Execution:**
+- Unit tests: Run on JVM using Robolectric (no emulator needed)
+- Integration tests: Run on JVM where possible, emulator for UI tests
+- Mock OpenGL calls for renderer tests
+
+### Test Utilities
+
+**Mock Data:**
+```kotlin
+object TestData {
+    fun createSimpleSphere(subdivisions: Int = 1): ClayModel
+    fun createTestModel(vertexCount: Int): ClayModel
+    fun createMockTouchEvent(x: Float, y: Float): MotionEvent
+}
+```
+
+**Assertions:**
+```kotlin
+fun assertVertexNear(expected: Vector3, actual: Vector3, tolerance: Float)
+fun assertMeshValid(model: ClayModel)
+fun assertFileFormatValid(file: File)
+```
+
+## CI/CD Pipeline
+
+### GitHub Actions Workflow
+
+**File:** `.github/workflows/android-ci.yml`
+
+**Triggers:**
+- Push to main/master branch
+- Pull requests to main/master
+- Manual workflow dispatch
+
+**Jobs:**
+
+**1. Lint Check**
+```yaml
+- name: Run Kotlin Lint
+  run: ./gradlew ktlintCheck
+```
+
+**2. Build**
+```yaml
+- name: Build Debug APK
+  run: ./gradlew assembleDebug
+```
+
+**3. Unit Tests**
+```yaml
+- name: Run Unit Tests
+  run: ./gradlew testDebugUnitTest
+  
+- name: Generate Coverage Report
+  run: ./gradlew jacocoTestReport
+```
+
+**4. Integration Tests**
+```yaml
+- name: Run Integration Tests
+  run: ./gradlew connectedDebugAndroidTest
+  # Note: Requires emulator or uses Robolectric
+```
+
+**5. Upload Artifacts**
+```yaml
+- name: Upload Test Reports
+  uses: actions/upload-artifact@v3
+  with:
+    name: test-reports
+    path: app/build/reports/
+    
+- name: Upload Coverage Report
+  uses: actions/upload-artifact@v3
+  with:
+    name: coverage-report
+    path: app/build/reports/jacoco/
+```
+
+**6. Coverage Check**
+```yaml
+- name: Check Coverage Threshold
+  run: |
+    ./gradlew jacocoTestCoverageVerification
+  # Fails if coverage < 80%
+```
+
+### Build Configuration
+
+**build.gradle.kts additions:**
+
+```kotlin
+plugins {
+    id("jacoco")
+    id("org.jlleitschuh.gradle.ktlint") version "11.6.1"
+}
+
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+tasks.jacocoTestReport {
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+tasks.jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = "0.80".toBigDecimal()
+            }
+        }
+    }
+}
+
+ktlint {
+    android.set(true)
+    ignoreFailures.set(false)
+}
+```
+
+### Lint Configuration
+
+**ktlint rules:**
+- Standard Kotlin style guide
+- Android-specific rules
+- Max line length: 120 characters
+- No wildcard imports
+- Consistent indentation
+
+### Pre-commit Hooks (Optional)
+
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit
+./gradlew ktlintCheck
+if [ $? -ne 0 ]; then
+    echo "Lint check failed. Run ./gradlew ktlintFormat to fix."
+    exit 1
+fi
+```
+
+## Test Data Management
+
+**Test Models:**
+- Simple sphere (100 vertices) for fast tests
+- Medium sphere (1000 vertices) for integration tests
+- Complex model (10000 vertices) for performance tests
+
+**Test Files:**
+- Valid save files for load testing
+- Corrupted files for error handling tests
+- STL reference files for export validation
 
 ## Error Handling
 

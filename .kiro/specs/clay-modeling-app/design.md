@@ -1295,6 +1295,8 @@ dependencies {
 - ClayModel: 90%+ coverage
 - Tool implementations: 90%+ coverage
 - FileManager: 85%+ coverage
+- File format validation: 95%+ coverage
+- STL export: 90%+ coverage
 - ModelingViewModel: 85%+ coverage
 - Overall business logic: 80%+ coverage
 
@@ -1336,6 +1338,518 @@ class FileManagerTest {
     @Test fun `loadModel handles corrupted files`()
     @Test fun `exportSTL creates valid STL format`()
     @Test fun `exportSTL handles empty model`()
+}
+```
+
+**File Format Validation Tests:**
+
+```kotlin
+class ClayFileFormatTest {
+    @Test 
+    fun `clay file has correct magic number`() {
+        val model = createTestModel()
+        val file = saveToTempFile(model)
+        
+        val bytes = file.readBytes()
+        val magic = bytes.sliceArray(0..3).toString(Charsets.US_ASCII)
+        
+        assertThat(magic).isEqualTo("CLAY")
+    }
+    
+    @Test 
+    fun `clay file has correct version`() {
+        val model = createTestModel()
+        val file = saveToTempFile(model)
+        
+        val version = readUInt32(file, offset = 4)
+        
+        assertThat(version).isEqualTo(1)
+    }
+    
+    @Test 
+    fun `clay file vertex count matches actual vertices`() {
+        val model = createTestModel(vertexCount = 100)
+        val file = saveToTempFile(model)
+        
+        val headerVertexCount = readUInt32(file, offset = 8)
+        val actualVertexCount = model.vertices.size
+        
+        assertThat(headerVertexCount).isEqualTo(actualVertexCount)
+    }
+    
+    @Test 
+    fun `clay file face count matches actual faces`() {
+        val model = createTestModel(faceCount = 200)
+        val file = saveToTempFile(model)
+        
+        val headerFaceCount = readUInt32(file, offset = 12)
+        val actualFaceCount = model.faces.size
+        
+        assertThat(headerFaceCount).isEqualTo(actualFaceCount)
+    }
+    
+    @Test 
+    fun `clay file checksum is valid`() {
+        val model = createTestModel()
+        val file = saveToTempFile(model)
+        
+        val storedChecksum = readUInt32(file, offset = 20)
+        val calculatedChecksum = calculateCRC32(file, skipBytes = 20..23)
+        
+        assertThat(storedChecksum).isEqualTo(calculatedChecksum)
+    }
+    
+    @Test 
+    fun `clay file metadata is valid JSON`() {
+        val model = createTestModel()
+        val file = saveToTempFile(model)
+        
+        val metadataLength = readUInt32(file, offset = 16)
+        val metadataBytes = file.readBytes().sliceArray(32 until 32 + metadataLength)
+        val metadataJson = metadataBytes.toString(Charsets.UTF_8)
+        
+        // Should parse without exception
+        val metadata = Json.parseToJsonElement(metadataJson)
+        assertThat(metadata.jsonObject).containsKey("name")
+        assertThat(metadata.jsonObject).containsKey("created")
+    }
+    
+    @Test 
+    fun `clay file vertex data is correct size`() {
+        val model = createTestModel(vertexCount = 100)
+        val file = saveToTempFile(model)
+        
+        val vertexCount = readUInt32(file, offset = 8)
+        val expectedSize = vertexCount * 12 // 3 floats * 4 bytes
+        
+        val metadataLength = readUInt32(file, offset = 16)
+        val vertexDataStart = 32 + metadataLength
+        val vertexDataEnd = vertexDataStart + expectedSize
+        
+        assertThat(file.length()).isGreaterThanOrEqualTo(vertexDataEnd)
+    }
+    
+    @Test 
+    fun `clay file vertices are valid floats`() {
+        val model = createTestModel()
+        val file = saveToTempFile(model)
+        
+        val vertices = readVertices(file)
+        
+        for (vertex in vertices) {
+            assertThat(vertex.x).isFinite()
+            assertThat(vertex.y).isFinite()
+            assertThat(vertex.z).isFinite()
+        }
+    }
+    
+    @Test 
+    fun `clay file face indices are within bounds`() {
+        val model = createTestModel(vertexCount = 100)
+        val file = saveToTempFile(model)
+        
+        val vertexCount = readUInt32(file, offset = 8)
+        val faces = readFaces(file)
+        
+        for (face in faces) {
+            assertThat(face.v1).isLessThan(vertexCount)
+            assertThat(face.v2).isLessThan(vertexCount)
+            assertThat(face.v3).isLessThan(vertexCount)
+        }
+    }
+    
+    @Test 
+    fun `clay file round trip preserves data`() {
+        val originalModel = createTestModel()
+        val file = saveToTempFile(originalModel)
+        val loadedModel = loadFromFile(file)
+        
+        assertThat(loadedModel.vertices.size).isEqualTo(originalModel.vertices.size)
+        assertThat(loadedModel.faces.size).isEqualTo(originalModel.faces.size)
+        
+        for (i in originalModel.vertices.indices) {
+            assertVertexNear(loadedModel.vertices[i], originalModel.vertices[i], 0.0001f)
+        }
+    }
+    
+    @Test 
+    fun `clay file with corrupted magic number is rejected`() {
+        val file = createCorruptedFile(corruptMagicNumber = true)
+        
+        assertThrows<InvalidFileFormatException> {
+            loadFromFile(file)
+        }
+    }
+    
+    @Test 
+    fun `clay file with invalid checksum is rejected`() {
+        val file = createCorruptedFile(corruptChecksum = true)
+        
+        assertThrows<CorruptedFileException> {
+            loadFromFile(file)
+        }
+    }
+}
+
+class STLFileFormatTest {
+    @Test 
+    fun `stl file has 80 byte header`() {
+        val model = createTestModel()
+        val file = exportToSTL(model)
+        
+        assertThat(file.length()).isGreaterThanOrEqualTo(80)
+    }
+    
+    @Test 
+    fun `stl file header contains app name`() {
+        val model = createTestModel(name = "TestModel")
+        val file = exportToSTL(model)
+        
+        val header = file.readBytes().sliceArray(0..79).toString(Charsets.US_ASCII)
+        
+        assertThat(header).contains("ClayModeler")
+        assertThat(header).contains("TestModel")
+    }
+    
+    @Test 
+    fun `stl file triangle count is correct`() {
+        val model = createTestModel(faceCount = 100)
+        val file = exportToSTL(model)
+        
+        val triangleCount = readUInt32LittleEndian(file, offset = 80)
+        
+        assertThat(triangleCount).isEqualTo(100)
+    }
+    
+    @Test 
+    fun `stl file has correct total size`() {
+        val model = createTestModel(faceCount = 100)
+        val file = exportToSTL(model)
+        
+        val expectedSize = 80 + 4 + (100 * 50) // header + count + triangles
+        
+        assertThat(file.length()).isEqualTo(expectedSize.toLong())
+    }
+    
+    @Test 
+    fun `stl file normals are unit vectors`() {
+        val model = createTestModel()
+        val file = exportToSTL(model)
+        
+        val triangles = readSTLTriangles(file)
+        
+        for (triangle in triangles) {
+            val normalLength = sqrt(
+                triangle.normal.x * triangle.normal.x +
+                triangle.normal.y * triangle.normal.y +
+                triangle.normal.z * triangle.normal.z
+            )
+            assertThat(normalLength).isCloseTo(1.0f, 0.001f)
+        }
+    }
+    
+    @Test 
+    fun `stl file normals match calculated normals`() {
+        val model = createTestModel()
+        val file = exportToSTL(model)
+        
+        val triangles = readSTLTriangles(file)
+        
+        for (triangle in triangles) {
+            val edge1 = triangle.v2 - triangle.v1
+            val edge2 = triangle.v3 - triangle.v1
+            val calculatedNormal = edge1.cross(edge2).normalize()
+            
+            assertVectorNear(triangle.normal, calculatedNormal, 0.01f)
+        }
+    }
+    
+    @Test 
+    fun `stl file uses little endian byte order`() {
+        val model = createTestModel()
+        val file = exportToSTL(model)
+        
+        // Read triangle count both ways
+        val bytes = file.readBytes()
+        val littleEndian = ByteBuffer.wrap(bytes, 80, 4)
+            .order(ByteOrder.LITTLE_ENDIAN)
+            .getInt()
+        val bigEndian = ByteBuffer.wrap(bytes, 80, 4)
+            .order(ByteOrder.BIG_ENDIAN)
+            .getInt()
+        
+        // Should be different unless count is palindromic
+        if (model.faces.size > 255) {
+            assertThat(littleEndian).isNotEqualTo(bigEndian)
+        }
+        assertThat(littleEndian).isEqualTo(model.faces.size)
+    }
+    
+    @Test 
+    fun `stl file vertices are in millimeters`() {
+        val model = createUnitSphere() // 1.0 unit radius
+        val file = exportToSTL(model, scale = 100f) // 100mm diameter
+        
+        val triangles = readSTLTriangles(file)
+        
+        // Find max distance from origin
+        var maxDistance = 0f
+        for (triangle in triangles) {
+            for (vertex in listOf(triangle.v1, triangle.v2, triangle.v3)) {
+                val distance = sqrt(vertex.x * vertex.x + vertex.y * vertex.y + vertex.z * vertex.z)
+                maxDistance = max(maxDistance, distance)
+            }
+        }
+        
+        // Should be approximately 50mm (radius of 100mm diameter sphere)
+        assertThat(maxDistance).isCloseTo(50f, 1f)
+    }
+    
+    @Test 
+    fun `stl file coordinate system is Z-up`() {
+        // Create model with known Y-up orientation
+        val model = createModelWithYUpOrientation()
+        val file = exportToSTL(model)
+        
+        val triangles = readSTLTriangles(file)
+        
+        // After conversion, what was Y should now be Z
+        // Verify by checking highest point
+        val maxZ = triangles.flatMap { listOf(it.v1, it.v2, it.v3) }
+            .maxOf { it.z }
+        val maxY = triangles.flatMap { listOf(it.v1, it.v2, it.v3) }
+            .maxOf { it.y }
+        
+        assertThat(maxZ).isGreaterThan(maxY)
+    }
+    
+    @Test 
+    fun `stl file has counter-clockwise winding`() {
+        val model = createTestModel()
+        val file = exportToSTL(model)
+        
+        val triangles = readSTLTriangles(file)
+        
+        for (triangle in triangles) {
+            val edge1 = triangle.v2 - triangle.v1
+            val edge2 = triangle.v3 - triangle.v1
+            val calculatedNormal = edge1.cross(edge2).normalize()
+            
+            // Calculated normal should match stored normal (same direction)
+            val dotProduct = calculatedNormal.dot(triangle.normal)
+            assertThat(dotProduct).isGreaterThan(0.99f) // Allow small tolerance
+        }
+    }
+    
+    @Test 
+    fun `stl file skips degenerate triangles`() {
+        val model = createModelWithDegenerateTriangles()
+        val file = exportToSTL(model)
+        
+        val triangleCount = readUInt32LittleEndian(file, offset = 80)
+        val validTriangleCount = model.faces.count { !isDegenerate(it) }
+        
+        assertThat(triangleCount).isEqualTo(validTriangleCount)
+    }
+    
+    @Test 
+    fun `stl file all normals point outward`() {
+        val model = createTestSphere()
+        val file = exportToSTL(model)
+        
+        val triangles = readSTLTriangles(file)
+        val center = calculateCenter(triangles)
+        
+        for (triangle in triangles) {
+            val faceCenter = (triangle.v1 + triangle.v2 + triangle.v3) / 3f
+            val toCenter = center - faceCenter
+            
+            // Normal should point away from center (negative dot product)
+            val dotProduct = triangle.normal.dot(toCenter)
+            assertThat(dotProduct).isLessThan(0f)
+        }
+    }
+    
+    @Test 
+    fun `stl file is valid for 3D printing software`() {
+        val model = createTestModel()
+        val file = exportToSTL(model)
+        
+        // Run basic STL validation
+        val validation = validateSTLFile(file)
+        
+        assertThat(validation.isValid).isTrue()
+        assertThat(validation.errors).isEmpty()
+    }
+    
+    @Test 
+    fun `stl export with different scales produces correct sizes`() {
+        val model = createUnitSphere()
+        
+        val scales = listOf(50f, 100f, 150f, 200f)
+        
+        for (scale in scales) {
+            val file = exportToSTL(model, scale = scale)
+            val triangles = readSTLTriangles(file)
+            
+            val maxDistance = triangles.flatMap { listOf(it.v1, it.v2, it.v3) }
+                .maxOf { sqrt(it.x * it.x + it.y * it.y + it.z * it.z) }
+            
+            // Should be approximately scale/2 (radius)
+            assertThat(maxDistance).isCloseTo(scale / 2f, scale * 0.05f)
+        }
+    }
+    
+    @Test 
+    fun `ascii stl format is valid`() {
+        val model = createTestModel()
+        val file = exportToASCIISTL(model)
+        
+        val content = file.readText()
+        
+        assertThat(content).startsWith("solid")
+        assertThat(content).endsWith("endsolid")
+        assertThat(content).contains("facet normal")
+        assertThat(content).contains("outer loop")
+        assertThat(content).contains("vertex")
+        assertThat(content).contains("endloop")
+        assertThat(content).contains("endfacet")
+    }
+}
+
+class FileFormatIntegrationTest {
+    @Test 
+    fun `save and load preserves model exactly`() {
+        val original = createComplexModel()
+        
+        val clayFile = saveToClayFile(original)
+        val loaded = loadFromClayFile(clayFile)
+        
+        assertModelsEqual(original, loaded, tolerance = 0.0001f)
+    }
+    
+    @Test 
+    fun `export to stl and reimport preserves geometry`() {
+        val original = createTestModel()
+        
+        val stlFile = exportToSTL(original)
+        val reimported = importFromSTL(stlFile)
+        
+        // Vertex positions should match (within tolerance for coordinate conversion)
+        assertModelsGeometricallyEqual(original, reimported, tolerance = 0.01f)
+    }
+    
+    @Test 
+    fun `large model saves and loads correctly`() {
+        val largeModel = createTestModel(vertexCount = 50000)
+        
+        val file = saveToClayFile(largeModel)
+        val loaded = loadFromClayFile(file)
+        
+        assertThat(loaded.vertices.size).isEqualTo(50000)
+        assertModelsEqual(largeModel, loaded, tolerance = 0.0001f)
+    }
+    
+    @Test 
+    fun `stl export handles mesh with holes`() {
+        val modelWithHoles = createNonManifoldModel()
+        
+        val result = exportToSTLWithValidation(modelWithHoles)
+        
+        assertThat(result.warnings).contains("Mesh has holes")
+        assertThat(result.file).isNotNull()
+    }
+    
+    @Test 
+    fun `file format version migration works`() {
+        val v1File = createVersion1ClayFile()
+        
+        // Should load and migrate to current version
+        val loaded = loadFromClayFile(v1File)
+        
+        assertThat(loaded).isNotNull()
+    }
+}
+```
+
+**Test Utilities:**
+
+```kotlin
+object TestData {
+    fun createTestModel(
+        vertexCount: Int = 100,
+        faceCount: Int = 200
+    ): ClayModel {
+        // Create icosphere with specified complexity
+    }
+    
+    fun createUnitSphere(): ClayModel {
+        // Create sphere with 1.0 unit radius
+    }
+    
+    fun createModelWithDegenerateTriangles(): ClayModel {
+        // Include some degenerate triangles for testing
+    }
+    
+    fun createNonManifoldModel(): ClayModel {
+        // Create model with holes/non-manifold edges
+    }
+    
+    fun createCorruptedFile(
+        corruptMagicNumber: Boolean = false,
+        corruptChecksum: Boolean = false
+    ): File {
+        // Create intentionally corrupted file for error testing
+    }
+}
+
+object FileAssertions {
+    fun assertVertexNear(actual: Vector3, expected: Vector3, tolerance: Float) {
+        assertThat(actual.x).isCloseTo(expected.x, tolerance)
+        assertThat(actual.y).isCloseTo(expected.y, tolerance)
+        assertThat(actual.z).isCloseTo(expected.z, tolerance)
+    }
+    
+    fun assertVectorNear(actual: Vector3, expected: Vector3, tolerance: Float) {
+        val distance = (actual - expected).length()
+        assertThat(distance).isLessThan(tolerance)
+    }
+    
+    fun assertModelsEqual(actual: ClayModel, expected: ClayModel, tolerance: Float) {
+        assertThat(actual.vertices.size).isEqualTo(expected.vertices.size)
+        assertThat(actual.faces.size).isEqualTo(expected.faces.size)
+        
+        for (i in actual.vertices.indices) {
+            assertVertexNear(actual.vertices[i], expected.vertices[i], tolerance)
+        }
+    }
+}
+
+object STLValidator {
+    fun validateSTLFile(file: File): ValidationResult {
+        // Check header size
+        if (file.length() < 84) {
+            return ValidationResult.Invalid("File too small")
+        }
+        
+        // Check triangle count matches file size
+        val triangleCount = readUInt32LittleEndian(file, 80)
+        val expectedSize = 84 + (triangleCount * 50)
+        if (file.length() != expectedSize) {
+            return ValidationResult.Invalid("File size mismatch")
+        }
+        
+        // Check all normals are unit vectors
+        val triangles = readSTLTriangles(file)
+        for (triangle in triangles) {
+            val length = triangle.normal.length()
+            if (abs(length - 1.0f) > 0.01f) {
+                return ValidationResult.Invalid("Non-unit normal found")
+            }
+        }
+        
+        return ValidationResult.Valid
+    }
 }
 ```
 

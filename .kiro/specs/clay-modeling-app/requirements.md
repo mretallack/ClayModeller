@@ -194,6 +194,18 @@ WHEN unit tests are executed
 THE SYSTEM SHALL test FileManager save/load/export functionality
 
 WHEN unit tests are executed
+THE SYSTEM SHALL validate .clay file format correctness (magic number, version, checksum, data integrity)
+
+WHEN unit tests are executed
+THE SYSTEM SHALL validate STL file format correctness (header, triangle count, normals, byte order)
+
+WHEN unit tests are executed
+THE SYSTEM SHALL test round-trip save/load preserves model data
+
+WHEN unit tests are executed
+THE SYSTEM SHALL test STL export produces valid 3D printing files
+
+WHEN unit tests are executed
 THE SYSTEM SHALL test ViewModel state management and undo/redo logic
 
 WHEN unit tests are executed

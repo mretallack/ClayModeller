@@ -2008,6 +2008,83 @@ class ModelWorkflowTest {
 - Integration tests: Run on JVM where possible, emulator for UI tests
 - Mock OpenGL calls for renderer tests
 
+**Local Headless Emulator Testing:**
+
+For running integration tests locally without a GUI:
+
+```bash
+# 1. Check KVM is available (required for hardware acceleration)
+ls -la /dev/kvm
+
+# 2. Install system image (one-time setup)
+sdkmanager "system-images;android-29;google_apis;x86_64"
+
+# 3. Create AVD (one-time setup)
+avdmanager create avd -n test_avd -k "system-images;android-29;google_apis;x86_64" --device "pixel_5"
+
+# 4. Start emulator headless
+emulator -avd test_avd -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+
+# 5. Wait for device to boot
+adb wait-for-device
+adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
+
+# 6. Run integration tests
+./gradlew connectedDebugAndroidTest
+
+# 7. Kill emulator when done
+adb emu kill
+```
+
+**Headless Emulator Options:**
+- `-no-window`: Run without GUI
+- `-no-audio`: Disable audio
+- `-no-boot-anim`: Skip boot animation (faster)
+- `-gpu swiftshader_indirect`: Software rendering (no GPU needed)
+- `-no-snapshot-save`: Don't save state on exit
+- `-wipe-data`: Start with clean state
+
+**Requirements:**
+- KVM enabled on Linux host
+- 2-4GB RAM per emulator instance
+- Android SDK with emulator installed
+- Boot time: ~30-60 seconds
+
+**Benefits:**
+- Test on server without GUI
+- Verify APK installation and functionality
+- Run full integration tests locally
+- Hardware accelerated (with KVM)
+
+**Script for Automated Testing:**
+```bash
+#!/bin/bash
+# test-with-emulator.sh
+
+set -e
+
+AVD_NAME="test_avd"
+API_LEVEL="29"
+
+echo "Starting emulator..."
+emulator -avd $AVD_NAME -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+EMULATOR_PID=$!
+
+echo "Waiting for device..."
+adb wait-for-device
+adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
+echo "Device ready!"
+
+echo "Running tests..."
+./gradlew connectedDebugAndroidTest
+
+echo "Killing emulator..."
+adb emu kill
+wait $EMULATOR_PID
+
+echo "Tests complete!"
+```
+
 ### Test Utilities
 
 **Mock Data:**

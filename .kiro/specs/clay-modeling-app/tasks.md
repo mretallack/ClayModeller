@@ -54,6 +54,19 @@
 
 **Expected Outcome:** App can access storage correctly on all Android versions
 
+### Task 1.6: Local Headless Emulator Setup
+- [ ] Verify KVM is available on development server
+- [ ] Install Android system image (API 29, x86_64)
+- [ ] Create test AVD with avdmanager
+- [ ] Test starting emulator headless
+- [ ] Create test-with-emulator.sh script
+- [ ] Verify adb can connect to headless emulator
+- [ ] Test running connectedDebugAndroidTest
+- [ ] Document emulator setup in README
+- [ ] Add emulator commands to development workflow
+
+**Expected Outcome:** Can run integration tests locally on headless emulator
+
 ## Phase 2: 3D Rendering (Week 2)
 
 ### Task 2.1: OpenGL Renderer Setup
@@ -411,6 +424,13 @@
   - Build debug APK: `./gradlew assembleDebug`
   - Run tests: `./gradlew testDebugUnitTest`
   - Build release: `./gradlew assembleRelease`
+- [ ] Add testing section:
+  - Unit tests: `./gradlew testDebugUnitTest`
+  - Integration tests: `./gradlew connectedDebugAndroidTest`
+  - Local headless emulator setup (KVM, AVD creation)
+  - Headless emulator commands
+  - test-with-emulator.sh script usage
+  - Running tests on physical device
 - [ ] Add usage guide:
   - Getting started (create new model)
   - Tool descriptions (Remove, Add, Pull, View)
@@ -434,7 +454,7 @@
 - [ ] Include links to issues and discussions
 - [ ] Add badges (build status, license, version)
 
-**Expected Outcome:** Comprehensive README with screenshots and complete documentation
+**Expected Outcome:** Comprehensive README with screenshots, testing instructions, and complete documentation
 
 ### Task 9.4a: LICENSE File
 - [ ] Create LICENSE file with MIT License
@@ -677,7 +697,7 @@
 
 ## Summary
 
-**Total Tasks:** ~125
+**Total Tasks:** ~126
 **Estimated Duration:** 8-10 weeks
 **Team Size:** 1 developer
 

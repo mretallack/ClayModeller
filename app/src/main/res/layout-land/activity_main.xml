@@ -32,75 +32,112 @@
         </FrameLayout>
 
         <!-- Tools on Side -->
-        <LinearLayout
+        <ScrollView
             android:layout_width="200dp"
             android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:background="@color/surface"
-            android:padding="16dp">
-
-            <!-- Tool Buttons -->
-            <Button
-                android:id="@+id/btn_remove"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:layout_marginBottom="8dp"
-                android:text="🗑️ Remove"
-                android:textSize="16sp" />
-
-            <Button
-                android:id="@+id/btn_add"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:layout_marginBottom="8dp"
-                android:text="➕ Add"
-                android:textSize="16sp" />
-
-            <Button
-                android:id="@+id/btn_pull"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:layout_marginBottom="8dp"
-                android:text="👆 Pull"
-                android:textSize="16sp" />
-
-            <Button
-                android:id="@+id/btn_view"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:layout_marginBottom="16dp"
-                android:text="👁️ View"
-                android:textSize="16sp" />
-
-            <!-- Settings -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Size:"
-                android:textSize="12sp" />
-
-            <SeekBar
-                android:id="@+id/slider_size"
+            android:background="@color/surface">
+            
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:max="100"
-                android:progress="50" />
+                android:orientation="vertical"
+                android:padding="16dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Strength:"
-                android:textSize="12sp"
-                android:layout_marginTop="8dp" />
+                <!-- Tool Buttons -->
+                <Button
+                    android:id="@+id/btn_remove"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="🗑️ Remove"
+                    android:textSize="14sp" />
 
-            <SeekBar
-                android:id="@+id/slider_strength"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:max="100"
-                android:progress="50" />
+                <Button
+                    android:id="@+id/btn_add"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="➕ Add"
+                    android:textSize="14sp" />
 
-        </LinearLayout>
+                <Button
+                    android:id="@+id/btn_pull"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="👆 Pull"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/btn_smooth"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="〰️ Smooth"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/btn_flatten"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="▬ Flatten"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/btn_pinch"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="🤏 Pinch"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/btn_inflate"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="🎈 Inflate"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/btn_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginBottom="16dp"
+                    android:text="👁️ View"
+                    android:textSize="14sp" />
+
+                <!-- Settings -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Size:"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/slider_size"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="100"
+                    android:progress="50" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Strength:"
+                    android:textSize="12sp"
+                    android:layout_marginTop="8dp" />
+
+                <SeekBar
+                    android:id="@+id/slider_strength"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="100"
+                    android:progress="50" />
+
+            </LinearLayout>
+        </ScrollView>
 
     </LinearLayout>
 

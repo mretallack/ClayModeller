@@ -27,77 +27,123 @@
     </FrameLayout>
 
     <!-- Tool Bar -->
-    <LinearLayout
-        android:id="@+id/tool_bar"
+    <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="72dp"
         android:background="@color/tool_bar"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:paddingHorizontal="8dp">
+        android:scrollbars="none">
+        
+        <LinearLayout
+            android:id="@+id/tool_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp">
 
-        <Button
-            android:id="@+id/btn_undo"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/tool_button_background"
-            android:text="↶"
-            android:textSize="24sp"
-            android:enabled="false"
-            android:contentDescription="Undo" />
+            <Button
+                android:id="@+id/btn_undo"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/tool_button_background"
+                android:text="↶"
+                android:textSize="24sp"
+                android:enabled="false"
+                android:contentDescription="Undo" />
 
-        <Button
-            android:id="@+id/btn_redo"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="16dp"
-            android:background="@drawable/tool_button_background"
-            android:text="↷"
-            android:textSize="24sp"
-            android:enabled="false"
-            android:contentDescription="Redo" />
+            <Button
+                android:id="@+id/btn_redo"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="16dp"
+                android:background="@drawable/tool_button_background"
+                android:text="↷"
+                android:textSize="24sp"
+                android:enabled="false"
+                android:contentDescription="Redo" />
 
-        <Button
-            android:id="@+id/btn_remove"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/tool_button_background"
-            android:text="🗑️"
-            android:textSize="24sp"
-            android:contentDescription="Remove clay tool" />
+            <Button
+                android:id="@+id/btn_remove"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/tool_button_background"
+                android:text="🗑️"
+                android:textSize="20sp"
+                android:contentDescription="Remove clay tool" />
 
-        <Button
-            android:id="@+id/btn_add"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/tool_button_background"
-            android:text="➕"
-            android:textSize="24sp"
-            android:contentDescription="Add clay tool" />
+            <Button
+                android:id="@+id/btn_add"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/tool_button_background"
+                android:text="➕"
+                android:textSize="20sp"
+                android:contentDescription="Add clay tool" />
 
-        <Button
-            android:id="@+id/btn_pull"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/tool_button_background"
-            android:text="👆"
-            android:textSize="24sp"
-            android:contentDescription="Pull clay tool" />
+            <Button
+                android:id="@+id/btn_pull"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/tool_button_background"
+                android:text="👆"
+                android:textSize="20sp"
+                android:contentDescription="Pull clay tool" />
 
-        <Button
-            android:id="@+id/btn_view"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:background="@drawable/tool_button_background"
-            android:text="👁️"
-            android:textSize="24sp"
-            android:contentDescription="View mode" />
+            <Button
+                android:id="@+id/btn_smooth"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/tool_button_background"
+                android:text="〰️"
+                android:textSize="20sp"
+                android:contentDescription="Smooth tool" />
 
-    </LinearLayout>
+            <Button
+                android:id="@+id/btn_flatten"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/tool_button_background"
+                android:text="▬"
+                android:textSize="20sp"
+                android:contentDescription="Flatten tool" />
+
+            <Button
+                android:id="@+id/btn_pinch"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/tool_button_background"
+                android:text="🤏"
+                android:textSize="20sp"
+                android:contentDescription="Pinch tool" />
+
+            <Button
+                android:id="@+id/btn_inflate"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/tool_button_background"
+                android:text="🎈"
+                android:textSize="20sp"
+                android:contentDescription="Inflate tool" />
+
+            <Button
+                android:id="@+id/btn_view"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="@drawable/tool_button_background"
+                android:text="👁️"
+                android:textSize="20sp"
+                android:contentDescription="View mode" />
+
+        </LinearLayout>
+    </HorizontalScrollView>
 
     <!-- Settings Panel -->
     <LinearLayout

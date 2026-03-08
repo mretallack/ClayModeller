@@ -28,6 +28,10 @@ class ModelingViewModel : ViewModel() {
     val removeClayTool = RemoveClayTool()
     val addClayTool = AddClayTool()
     val pullClayTool = PullClayTool()
+    val smoothTool = SmoothTool()
+    val flattenTool = FlattenTool()
+    val pinchTool = PinchTool()
+    val inflateTool = InflateTool()
     val viewModeTool = ViewModeTool()
     
     private val undoStack = ArrayDeque<ClayModel>(20)

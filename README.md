@@ -185,6 +185,13 @@ Standard STL for 3D printing:
 - Lower subdivision level
 - Close background apps
 
+## TODO
+
+1. **Custom App Icon** - Replace default icon with clay modeling themed icon
+2. **Additional Tools** - Smooth, flatten, pinch, inflate tools
+3. **Lighting Controls** - Adjust light position and intensity for better visualization
+4. **Example Models** - Built-in example models accessible from menu
+
 ## License
 
 MIT License - see LICENSE file

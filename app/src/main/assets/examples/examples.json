@@ -1,0 +1,34 @@
+{
+  "examples": [
+    {
+      "filename": "sphere.clay",
+      "name": "Basic Sphere",
+      "description": "Starting point - practice basic tools",
+      "difficulty": "beginner"
+    },
+    {
+      "filename": "cube.clay",
+      "name": "Rounded Cube",
+      "description": "Demonstrates flatten and smooth tools",
+      "difficulty": "beginner"
+    },
+    {
+      "filename": "vase.clay",
+      "name": "Simple Vase",
+      "description": "Shows pull and smooth techniques",
+      "difficulty": "intermediate"
+    },
+    {
+      "filename": "character.clay",
+      "name": "Character Head",
+      "description": "Basic character modeling with pinch details",
+      "difficulty": "intermediate"
+    },
+    {
+      "filename": "abstract.clay",
+      "name": "Abstract Form",
+      "description": "Creative use of all tools",
+      "difficulty": "advanced"
+    }
+  ]
+}

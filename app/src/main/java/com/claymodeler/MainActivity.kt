@@ -93,36 +93,36 @@ class MainActivity : AppCompatActivity() {
         val btnInflate = findViewById<android.widget.Button>(R.id.btn_inflate)
         val btnView = findViewById<android.widget.Button>(R.id.btn_view)
         
-        val toolButtons = listOf(btnRemove, btnAdd, btnPull, btnSmooth, btnFlatten, btnPinch, btnInflate, btnView)
+        val toolButtons = listOfNotNull(btnRemove, btnAdd, btnPull, btnSmooth, btnFlatten, btnPinch, btnInflate, btnView)
         
-        btnUndo.setOnClickListener {
+        btnUndo?.setOnClickListener {
             viewModel.undo()
         }
-        btnRedo.setOnClickListener {
+        btnRedo?.setOnClickListener {
             viewModel.redo()
         }
-        btnRemove.setOnClickListener {
+        btnRemove?.setOnClickListener {
             viewModel.setTool(viewModel.removeClayTool)
         }
-        btnAdd.setOnClickListener {
+        btnAdd?.setOnClickListener {
             viewModel.setTool(viewModel.addClayTool)
         }
-        btnPull.setOnClickListener {
+        btnPull?.setOnClickListener {
             viewModel.setTool(viewModel.pullClayTool)
         }
-        btnSmooth.setOnClickListener {
+        btnSmooth?.setOnClickListener {
             viewModel.setTool(viewModel.smoothTool)
         }
-        btnFlatten.setOnClickListener {
+        btnFlatten?.setOnClickListener {
             viewModel.setTool(viewModel.flattenTool)
         }
-        btnPinch.setOnClickListener {
+        btnPinch?.setOnClickListener {
             viewModel.setTool(viewModel.pinchTool)
         }
-        btnInflate.setOnClickListener {
+        btnInflate?.setOnClickListener {
             viewModel.setTool(viewModel.inflateTool)
         }
-        btnView.setOnClickListener {
+        btnView?.setOnClickListener {
             viewModel.setTool(viewModel.viewModeTool)
         }
         
@@ -207,25 +207,25 @@ class MainActivity : AppCompatActivity() {
     
     private fun updateToolSelection(tool: com.claymodeler.tool.Tool) {
         // Reset all buttons
-        findViewById<android.widget.Button>(R.id.btn_remove).isSelected = false
-        findViewById<android.widget.Button>(R.id.btn_add).isSelected = false
-        findViewById<android.widget.Button>(R.id.btn_pull).isSelected = false
-        findViewById<android.widget.Button>(R.id.btn_smooth).isSelected = false
-        findViewById<android.widget.Button>(R.id.btn_flatten).isSelected = false
-        findViewById<android.widget.Button>(R.id.btn_pinch).isSelected = false
-        findViewById<android.widget.Button>(R.id.btn_inflate).isSelected = false
-        findViewById<android.widget.Button>(R.id.btn_view).isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_remove)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_add)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_pull)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_smooth)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_flatten)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_pinch)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_inflate)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_view)?.isSelected = false
         
         // Highlight active tool
         when (tool) {
-            viewModel.removeClayTool -> findViewById<android.widget.Button>(R.id.btn_remove).isSelected = true
-            viewModel.addClayTool -> findViewById<android.widget.Button>(R.id.btn_add).isSelected = true
-            viewModel.pullClayTool -> findViewById<android.widget.Button>(R.id.btn_pull).isSelected = true
-            viewModel.smoothTool -> findViewById<android.widget.Button>(R.id.btn_smooth).isSelected = true
-            viewModel.flattenTool -> findViewById<android.widget.Button>(R.id.btn_flatten).isSelected = true
-            viewModel.pinchTool -> findViewById<android.widget.Button>(R.id.btn_pinch).isSelected = true
-            viewModel.inflateTool -> findViewById<android.widget.Button>(R.id.btn_inflate).isSelected = true
-            viewModel.viewModeTool -> findViewById<android.widget.Button>(R.id.btn_view).isSelected = true
+            viewModel.removeClayTool -> findViewById<android.widget.Button>(R.id.btn_remove)?.isSelected = true
+            viewModel.addClayTool -> findViewById<android.widget.Button>(R.id.btn_add)?.isSelected = true
+            viewModel.pullClayTool -> findViewById<android.widget.Button>(R.id.btn_pull)?.isSelected = true
+            viewModel.smoothTool -> findViewById<android.widget.Button>(R.id.btn_smooth)?.isSelected = true
+            viewModel.flattenTool -> findViewById<android.widget.Button>(R.id.btn_flatten)?.isSelected = true
+            viewModel.pinchTool -> findViewById<android.widget.Button>(R.id.btn_pinch)?.isSelected = true
+            viewModel.inflateTool -> findViewById<android.widget.Button>(R.id.btn_inflate)?.isSelected = true
+            viewModel.viewModeTool -> findViewById<android.widget.Button>(R.id.btn_view)?.isSelected = true
         }
     }
     

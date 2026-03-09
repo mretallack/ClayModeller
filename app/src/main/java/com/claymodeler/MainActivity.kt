@@ -87,27 +87,50 @@ class MainActivity : AppCompatActivity() {
         val btnRemove = findViewById<android.widget.Button>(R.id.btn_remove)
         val btnAdd = findViewById<android.widget.Button>(R.id.btn_add)
         val btnPull = findViewById<android.widget.Button>(R.id.btn_pull)
+        val btnSmooth = findViewById<android.widget.Button>(R.id.btn_smooth)
+        val btnFlatten = findViewById<android.widget.Button>(R.id.btn_flatten)
+        val btnPinch = findViewById<android.widget.Button>(R.id.btn_pinch)
+        val btnInflate = findViewById<android.widget.Button>(R.id.btn_inflate)
         val btnView = findViewById<android.widget.Button>(R.id.btn_view)
         
-        val toolButtons = listOf(btnRemove, btnAdd, btnPull, btnView)
+        val toolButtons = listOfNotNull(btnRemove, btnAdd, btnPull, btnSmooth, btnFlatten, btnPinch, btnInflate, btnView)
         
-        btnUndo.setOnClickListener {
+        btnUndo?.setOnClickListener {
             viewModel.undo()
         }
-        btnRedo.setOnClickListener {
+        btnRedo?.setOnClickListener {
             viewModel.redo()
         }
-        btnRemove.setOnClickListener {
+        btnRemove?.setOnClickListener {
             viewModel.setTool(viewModel.removeClayTool)
         }
-        btnAdd.setOnClickListener {
+        btnAdd?.setOnClickListener {
             viewModel.setTool(viewModel.addClayTool)
         }
-        btnPull.setOnClickListener {
+        btnPull?.setOnClickListener {
             viewModel.setTool(viewModel.pullClayTool)
         }
-        btnView.setOnClickListener {
+        btnSmooth?.setOnClickListener {
+            viewModel.setTool(viewModel.smoothTool)
+        }
+        btnFlatten?.setOnClickListener {
+            viewModel.setTool(viewModel.flattenTool)
+        }
+        btnPinch?.setOnClickListener {
+            viewModel.setTool(viewModel.pinchTool)
+        }
+        btnInflate?.setOnClickListener {
+            viewModel.setTool(viewModel.inflateTool)
+        }
+        btnView?.setOnClickListener {
             viewModel.setTool(viewModel.viewModeTool)
+        }
+        
+        // Set up symmetry button
+        val btnSymmetry = findViewById<android.widget.Button>(R.id.btn_symmetry)
+        btnSymmetry?.setOnClickListener {
+            viewModel.toggleSymmetry()
+            btnSymmetry.text = if (viewModel.isSymmetryEnabled()) "Symmetry: ON" else "Symmetry: OFF"
         }
         
         // Observe undo/redo state
@@ -191,17 +214,25 @@ class MainActivity : AppCompatActivity() {
     
     private fun updateToolSelection(tool: com.claymodeler.tool.Tool) {
         // Reset all buttons
-        findViewById<android.widget.Button>(R.id.btn_remove).isSelected = false
-        findViewById<android.widget.Button>(R.id.btn_add).isSelected = false
-        findViewById<android.widget.Button>(R.id.btn_pull).isSelected = false
-        findViewById<android.widget.Button>(R.id.btn_view).isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_remove)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_add)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_pull)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_smooth)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_flatten)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_pinch)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_inflate)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_view)?.isSelected = false
         
         // Highlight active tool
         when (tool) {
-            viewModel.removeClayTool -> findViewById<android.widget.Button>(R.id.btn_remove).isSelected = true
-            viewModel.addClayTool -> findViewById<android.widget.Button>(R.id.btn_add).isSelected = true
-            viewModel.pullClayTool -> findViewById<android.widget.Button>(R.id.btn_pull).isSelected = true
-            viewModel.viewModeTool -> findViewById<android.widget.Button>(R.id.btn_view).isSelected = true
+            viewModel.removeClayTool -> findViewById<android.widget.Button>(R.id.btn_remove)?.isSelected = true
+            viewModel.addClayTool -> findViewById<android.widget.Button>(R.id.btn_add)?.isSelected = true
+            viewModel.pullClayTool -> findViewById<android.widget.Button>(R.id.btn_pull)?.isSelected = true
+            viewModel.smoothTool -> findViewById<android.widget.Button>(R.id.btn_smooth)?.isSelected = true
+            viewModel.flattenTool -> findViewById<android.widget.Button>(R.id.btn_flatten)?.isSelected = true
+            viewModel.pinchTool -> findViewById<android.widget.Button>(R.id.btn_pinch)?.isSelected = true
+            viewModel.inflateTool -> findViewById<android.widget.Button>(R.id.btn_inflate)?.isSelected = true
+            viewModel.viewModeTool -> findViewById<android.widget.Button>(R.id.btn_view)?.isSelected = true
         }
     }
     
@@ -260,12 +291,13 @@ class MainActivity : AppCompatActivity() {
                                             com.claymodeler.model.Vector3(0f, 0f, 0f)
                                         }
                                         
-                                        tool.apply(
+                                        tool.applyWithSymmetry(
                                             model,
                                             hit.hitPoint,
                                             viewModel.toolEngine.strength,
                                             viewModel.toolEngine.brushSize,
-                                            dragDir
+                                            dragDir,
+                                            viewModel.toolEngine.symmetryEnabled
                                         )
                                         renderer.updateModel()
                                         previousHitPoint = hit.hitPoint
@@ -339,7 +371,9 @@ class MainActivity : AppCompatActivity() {
         menu.add(0, 1, 0, "New")
         menu.add(0, 2, 0, "Save")
         menu.add(0, 3, 0, "Load")
-        menu.add(0, 4, 0, "Export STL")
+        menu.add(0, 4, 0, "Examples")
+        menu.add(0, 5, 0, "Lighting")
+        menu.add(0, 6, 0, "Export STL")
         return true
     }
     
@@ -358,6 +392,14 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             4 -> {
+                showExamplesDialog()
+                true
+            }
+            5 -> {
+                showLightingDialog()
+                true
+            }
+            6 -> {
                 showExportDialog()
                 true
             }
@@ -408,6 +450,45 @@ class MainActivity : AppCompatActivity() {
                 android.widget.Toast.makeText(this, "Loaded: $filename", android.widget.Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 android.widget.Toast.makeText(this, "Load failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }.show()
+    }
+    
+    private fun showLightingDialog() {
+        viewModel.model.value?.let { model ->
+            com.claymodeler.ui.LightingDialog(this, model).show()
+        }
+    }
+    
+    private fun showExamplesDialog() {
+        val exampleManager = com.claymodeler.examples.ExampleManager(this)
+        val examples = exampleManager.loadExampleList()
+        
+        if (examples.isEmpty()) {
+            android.widget.Toast.makeText(this, "No examples available", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        com.claymodeler.ui.ExampleBrowserDialog(this, examples) { filename ->
+            val model = exampleManager.loadExample(filename)
+            if (model != null) {
+                viewModel.model.value?.let { currentModel ->
+                    currentModel.vertices.clear()
+                    currentModel.faces.clear()
+                    currentModel.normals.clear()
+                    currentModel.vertices.addAll(model.vertices)
+                    currentModel.faces.addAll(model.faces)
+                    currentModel.normals.addAll(model.normals)
+                    currentModel.lightPosition = model.lightPosition
+                    currentModel.lightIntensity = model.lightIntensity
+                    
+                    glSurfaceView.queueEvent {
+                        renderer.setModel(currentModel)
+                    }
+                }
+                android.widget.Toast.makeText(this, "Loaded example: $filename", android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                android.widget.Toast.makeText(this, "Failed to load example", android.widget.Toast.LENGTH_SHORT).show()
             }
         }.show()
     }

@@ -28,6 +28,10 @@ class ModelingViewModel : ViewModel() {
     val removeClayTool = RemoveClayTool()
     val addClayTool = AddClayTool()
     val pullClayTool = PullClayTool()
+    val smoothTool = SmoothTool()
+    val flattenTool = FlattenTool()
+    val pinchTool = PinchTool()
+    val inflateTool = InflateTool()
     val viewModeTool = ViewModeTool()
     
     private val undoStack = ArrayDeque<ClayModel>(20)
@@ -60,6 +64,16 @@ class ModelingViewModel : ViewModel() {
     fun setStrength(strength: Float) {
         toolEngine.strength = strength
     }
+    
+    fun setSymmetryEnabled(enabled: Boolean) {
+        toolEngine.symmetryEnabled = enabled
+    }
+    
+    fun toggleSymmetry() {
+        toolEngine.symmetryEnabled = !toolEngine.symmetryEnabled
+    }
+    
+    fun isSymmetryEnabled(): Boolean = toolEngine.symmetryEnabled
     
     fun saveState() {
         val currentModel = _model.value ?: return

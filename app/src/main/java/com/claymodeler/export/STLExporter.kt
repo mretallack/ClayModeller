@@ -32,7 +32,7 @@ class STLExporter(private val context: Context) {
         try {
             // Write header (80 bytes)
             val header = ByteArray(80)
-            "Binary STL exported from ClayModeler".toByteArray().copyInto(header)
+            "Binary STL exported from ClayModeller".toByteArray().copyInto(header)
             outputStream.write(header)
             
             // Write triangle count

@@ -30,6 +30,10 @@ class MainActivity : AppCompatActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Set status bar color to match toolbar
+        window.statusBarColor = resources.getColor(R.color.primary_dark, theme)
+        
         setContentView(R.layout.activity_main)
         
         // Initialize ViewModel
@@ -49,10 +53,12 @@ class MainActivity : AppCompatActivity() {
             permissionManager.requestStoragePermission()
         }
         
-        // Set up toolbar
-        setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.title = "ClayModeler"
-        supportActionBar?.setDisplayShowTitleEnabled(true)
+        // Set up floating menu button
+        val fabMenu = findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fab_menu)
+        fabMenu.setOnClickListener {
+            // Show menu (will implement popup menu)
+            showMenu(it)
+        }
         
         // Set up GLSurfaceView
         glSurfaceView = GLSurfaceView(this)
@@ -367,14 +373,27 @@ class MainActivity : AppCompatActivity() {
         glSurfaceView.onResume()
     }
     
-    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
-        menu.add(0, 1, 0, "New")
-        menu.add(0, 2, 0, "Save")
-        menu.add(0, 3, 0, "Load")
-        menu.add(0, 4, 0, "Examples")
-        menu.add(0, 5, 0, "Lighting")
-        menu.add(0, 6, 0, "Export STL")
-        return true
+    private fun showMenu(view: android.view.View) {
+        val popup = android.widget.PopupMenu(this, view)
+        popup.menu.add(0, 1, 0, "New")
+        popup.menu.add(0, 2, 0, "Save")
+        popup.menu.add(0, 3, 0, "Load")
+        popup.menu.add(0, 4, 0, "Examples")
+        popup.menu.add(0, 5, 0, "Lighting")
+        popup.menu.add(0, 6, 0, "Export STL")
+        
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> { showNewDialog(); true }
+                2 -> { showSaveDialog(); true }
+                3 -> { showLoadDialog(); true }
+                4 -> { showExamplesDialog(); true }
+                5 -> { showLightingDialog(); true }
+                6 -> { showExportDialog(); true }
+                else -> false
+            }
+        }
+        popup.show()
     }
     
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {

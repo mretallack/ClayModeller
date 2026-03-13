@@ -353,6 +353,43 @@ This is stored in the relevant config (KeyringConfig, HookConfig) and passed to 
 | Tap empty space | Orbit camera (normal preview behavior) |
 | Long press | Reset attachment to nearest preset position |
 | Double tap attachment | Remove attachment |
+| Three-finger tap | Undo last placement action |
+
+#### Undo/Redo
+
+- Maintain a stack of placement actions (move, rotate, resize, place, remove)
+- Three-finger tap to undo, or use toolbar undo/redo buttons
+- Stack depth: 20 actions maximum
+- Undo restores previous position, rotation, and scale
+
+#### Multiple Attachments
+
+Users may want to combine attachments. Valid combinations:
+
+| Combination | Allowed | Notes |
+|-------------|---------|-------|
+| Base + Keyring Loop | ✅ | Display model with base, loop on top |
+| Base + Wall Hook | ❌ | Conflicting purpose - warn user |
+| Keyring Loop + Wall Hook | ❌ | Conflicting purpose - warn user |
+| Multiple Keyring Loops | ❌ | One loop only |
+| Multiple Wall Hooks | ❌ | One hook only |
+
+When user selects an incompatible combination, show a dialog explaining why and offer to replace the existing attachment.
+
+#### Small Screen Handling
+
+On devices with screens < 5.5":
+- Placement preset buttons collapse into a dropdown menu
+- "Zoom to placement" button magnifies the area around the attachment point
+- Touch target for the placed attachment is expanded to 48dp minimum
+- A precision mode toggle enables a crosshair cursor offset from the finger so the user can see what they're touching
+
+#### Accessibility
+
+- **TalkBack support**: Preset buttons are fully labeled. In custom placement mode, TalkBack announces the region of the model under focus (e.g. "top of head", "left side")
+- **Switch Access**: All placement actions available via toolbar buttons as alternative to gestures
+- **Keyboard/D-pad**: Arrow keys nudge attachment position in small increments, Enter confirms
+- **Haptic feedback**: Vibration pulse when attachment snaps to surface and when placement is invalid
 
 ### Preview Rendering
 
@@ -595,6 +632,178 @@ class ExportWizardFlowTest {
 }
 ```
 
+#### SurfacePicker Tests
+```kotlin
+class SurfacePickerTest {
+    @Test
+    fun `ray-cast hits front-facing triangle`()
+    
+    @Test
+    fun `ray-cast misses model returns null`()
+    
+    @Test
+    fun `ray-cast returns nearest triangle when multiple hit`()
+    
+    @Test
+    fun `hit result contains correct surface normal`()
+    
+    @Test
+    fun `hit result position is on triangle surface`()
+    
+    @Test
+    fun `screen coordinates map to correct ray direction`()
+    
+    @Test
+    fun `pick works after camera rotation`()
+    
+    @Test
+    fun `pick works after camera zoom`()
+}
+```
+
+#### Placement Interaction Tests
+```kotlin
+class PlacementInteractionTest {
+    @Test
+    fun `tap on model places attachment at hit point`()
+    
+    @Test
+    fun `tap on empty space does not place attachment`()
+    
+    @Test
+    fun `drag moves attachment along model surface`()
+    
+    @Test
+    fun `drag off model edge snaps to nearest valid position`()
+    
+    @Test
+    fun `two-finger rotate changes attachment rotation`()
+    
+    @Test
+    fun `pinch adjusts attachment scale within valid range`()
+    
+    @Test
+    fun `pinch does not scale below minimum size`()
+    
+    @Test
+    fun `pinch does not scale above maximum size`()
+    
+    @Test
+    fun `long press resets to nearest preset position`()
+    
+    @Test
+    fun `double tap removes attachment`()
+    
+    @Test
+    fun `confirm button locks placement`()
+    
+    @Test
+    fun `ghost preview follows finger before confirm`()
+    
+    @Test
+    fun `invalid placement shows red indicator`()
+    
+    @Test
+    fun `valid placement shows green indicator`()
+    
+    @Test
+    fun `placement on thin edge is rejected`()
+    
+    @Test
+    fun `keyring loop blocked by geometry is rejected`()
+    
+    @Test
+    fun `preset button places attachment at correct position`()
+    
+    @Test
+    fun `each preset button maps to correct model region`()
+}
+```
+
+#### Undo/Redo Tests
+```kotlin
+class PlacementUndoRedoTest {
+    @Test
+    fun `undo reverts last placement`()
+    
+    @Test
+    fun `undo reverts last move`()
+    
+    @Test
+    fun `undo reverts last rotation`()
+    
+    @Test
+    fun `undo reverts last resize`()
+    
+    @Test
+    fun `redo restores undone action`()
+    
+    @Test
+    fun `undo stack is limited to 20 actions`()
+    
+    @Test
+    fun `new action clears redo stack`()
+    
+    @Test
+    fun `undo on empty stack does nothing`()
+    
+    @Test
+    fun `three-finger tap triggers undo`()
+    
+    @Test
+    fun `toolbar undo button triggers undo`()
+}
+```
+
+#### Multiple Attachment Tests
+```kotlin
+class MultipleAttachmentTest {
+    @Test
+    fun `base and keyring loop can be combined`()
+    
+    @Test
+    fun `base and wall hook shows incompatible warning`()
+    
+    @Test
+    fun `keyring loop and wall hook shows incompatible warning`()
+    
+    @Test
+    fun `replacing attachment removes previous one`()
+    
+    @Test
+    fun `combined base and loop exports correctly`()
+}
+```
+
+#### Accessibility Tests
+```kotlin
+class PlacementAccessibilityTest {
+    @Test
+    fun `preset buttons have content descriptions`()
+    
+    @Test
+    fun `TalkBack announces model region during placement`()
+    
+    @Test
+    fun `arrow keys nudge attachment position`()
+    
+    @Test
+    fun `enter key confirms placement`()
+    
+    @Test
+    fun `haptic feedback fires on surface snap`()
+    
+    @Test
+    fun `haptic feedback fires on invalid placement`()
+    
+    @Test
+    fun `touch targets are minimum 48dp`()
+    
+    @Test
+    fun `precision mode crosshair is offset from finger`()
+}
+```
+
 #### Configuration Persistence Tests
 ```kotlin
 class ConfigurationPersistenceTest {
@@ -693,8 +902,21 @@ class EndToEndExportTest {
 - Base only
 - Keyring loop only
 - Wall hook only
-- Base + keyring loop (invalid combination - should warn)
-- Base + wall hook (invalid combination - should warn)
+- Base + keyring loop (valid - should work)
+- Base + wall hook (invalid - should warn)
+- Keyring loop + wall hook (invalid - should warn)
+
+#### Placement Manual Tests
+- **Tap accuracy**: Place loop on owl's head, verify it lands where tapped
+- **Drag along curved surface**: Drag loop from top of owl to side, verify smooth movement
+- **Rotate on surface**: Rotate loop 90° on side of model, verify orientation updates
+- **Pinch resize**: Resize loop from small to large, verify geometry updates
+- **Undo chain**: Place → move → rotate → undo × 3, verify returns to no attachment
+- **Preset buttons**: Tap each preset (top/bottom/left/right/front/back), verify correct placement
+- **Invalid placement**: Try placing loop on very thin edge of model, verify rejection
+- **Small screen**: Test on 5" phone, verify precision mode and dropdown menus work
+- **Fat finger test**: Try placing on small model area, verify touch target expansion helps
+- **Accessibility**: Enable TalkBack, navigate placement UI, verify all actions are possible
 
 #### 3D Print Validation
 For each attachment type, print and verify:

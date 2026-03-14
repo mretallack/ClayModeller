@@ -260,136 +260,80 @@ Ensures exported STL is watertight:
 
 ### Attachment Placement Interaction
 
-The user needs an intuitive way to position attachments on their model. This uses a touch-based placement system on the 3D preview.
+The user needs an intuitive way to position attachments on their model. This uses a dual-mode touch system on the 3D preview.
 
-#### Placement Modes
+#### Dual-Mode Touch System
 
-**Quick Placement (Presets)**
-For users who want simplicity, offer preset positions:
-- TOP / BOTTOM / LEFT / RIGHT / FRONT / BACK
-- Displayed as labeled buttons around the 3D preview
-- Tapping a button snaps the attachment to that position on the model surface
+The 3D preview has two modes, toggled by a floating button:
 
-**Touch-to-Place (Custom)**
-For precise control, the user taps directly on the 3D model:
+**Camera Mode (default)**
+- One-finger drag: orbit camera
+- Two-finger pinch: zoom
+- Two-finger drag: pan
+- This is the standard 3D preview behavior
 
-1. User selects attachment type (loop, hook, etc.)
-2. Preview enters "placement mode" - model renders with a subtle grid overlay
-3. User taps a point on the model surface
-4. System performs ray-cast from touch point into the scene
-5. Ray intersects model mesh → nearest triangle face is identified
-6. Attachment preview appears at the intersection point, oriented along the face normal
-7. User can refine by:
-   - **Drag**: Slide attachment along model surface
-   - **Two-finger rotate**: Spin attachment around the surface normal
-   - **Pinch**: Adjust attachment size (within valid range)
-8. "Confirm Placement" button locks the position
+**Placement Mode**
+- One-finger tap on model: place attachment at that surface point
+- One-finger drag on model: slide attachment along the surface in real-time (continuous raycasting each frame)
+- Two-finger rotate: spin attachment around its surface normal (for orienting hooks sideways, etc.)
+- Pinch: scale attachment up/down within valid range
+- Tap on empty space: no action (prevents accidental camera movement)
 
-#### Ray-Cast Surface Selection
+A floating toggle button (🔒/✋ icon) switches between modes. The button shows the current mode clearly. When in placement mode, the preview border glows with the accent color to make the mode obvious.
 
-```kotlin
-class SurfacePicker(private val mesh: Mesh) {
-    data class HitResult(
-        val position: Vector3,    // World-space hit point
-        val normal: Vector3,      // Surface normal at hit
-        val faceIndex: Int        // Triangle face index
-    )
+#### How Drag-to-Place Works
 
-    fun pick(screenX: Float, screenY: Float, viewMatrix: Matrix4, projMatrix: Matrix4): HitResult? {
-        val ray = screenToRay(screenX, screenY, viewMatrix, projMatrix)
-        return intersectMesh(ray, mesh)
-    }
-}
+1. User enters placement mode via toggle button
+2. User touches the model surface
+3. System raycasts from touch point through the scene
+4. Ray hits model triangle → attachment snaps to that point, oriented along the face normal
+5. As user drags their finger, the system raycasts continuously (~30fps)
+6. Attachment smoothly slides along the model surface following the finger
+7. When finger lifts, attachment stays at last valid position
+8. User can two-finger rotate to adjust orientation
+9. Toggle back to camera mode to orbit and inspect
+
+#### Implementation
+
+```
+WizardPreviewView
+├── placementMode: Boolean (toggled by button)
+├── onTouchEvent()
+│   ├── if !placementMode → delegate to camera controls
+│   └── if placementMode →
+│       ├── ACTION_DOWN → raycast, place attachment
+│       ├── ACTION_MOVE → raycast each frame, slide attachment
+│       ├── Two-finger rotate → update PlacementResult.rotation
+│       └── Pinch → update PlacementResult.scale
+├── onPlacementChanged callback → rebuilds merged model, updates GL
+└── Mode toggle button overlaid on preview
 ```
 
-#### Attachment Orientation
+The key technical detail: each touch move event triggers a raycast from screen coordinates to the model mesh. The `SurfacePicker` returns the hit position and surface normal. The attachment geometry is regenerated at the new position and the merged model is uploaded to the GPU. To keep this smooth, geometry generation is kept lightweight (the attachment meshes are small, ~300-600 vertices).
 
-Once placed on a surface:
-- **Keyring loop**: Oriented perpendicular to surface normal, ring plane faces outward so a keyring can slide through
-- **Wall hook (keyhole/holes)**: Oriented flush against surface, opening faces outward
-- **Hanging loop**: Oriented perpendicular to surface, ring plane is vertical for hanging
-- **Base**: Always snaps to the bottom, no custom placement needed (auto-aligns to lowest point)
+#### Visual Feedback
 
-#### Visual Feedback During Placement
+- **Placement mode active**: Accent-colored border around preview, toggle button highlighted
+- **Valid placement**: Attachment renders normally
+- **Invalid placement**: Attachment renders with a red tint (validation text shown below preview)
+- **Dragging**: Attachment follows finger smoothly along surface
 
-- **Valid placement**: Attachment renders in green with a checkmark icon
-- **Invalid placement** (e.g. too close to edge, intersects geometry): Attachment renders in red with warning text explaining why
-- **Surface highlight**: The triangle under the user's finger highlights in blue during drag
-- **Ghost preview**: Semi-transparent attachment follows the user's finger before confirming
-- **Snap guides**: Optional grid snapping for symmetrical placement (toggle in settings)
+#### Preset Buttons (Quick Placement)
 
-#### Placement Validation
-
-Before confirming placement, the system checks:
-- Attachment doesn't intersect with model interior
-- Minimum surface area at attachment point (avoids placing on thin edges)
-- Attachment is fully connected to model surface (no floating)
-- For keyring loops: ring opening is not blocked by nearby geometry
-- For wall hooks: sufficient flat area for mounting
-
-If validation fails, show a toast with the reason and suggest the nearest valid position.
-
-#### Placement Data Model
-
-```kotlin
-data class PlacementResult(
-    val position: Vector3,       // World-space position on model surface
-    val normal: Vector3,         // Surface normal at placement point
-    val rotation: Float = 0f,    // User-applied rotation around normal (degrees)
-    val scale: Float = 1f        // User-applied size adjustment
-)
-```
-
-This is stored in the relevant config (KeyringConfig, HookConfig) and passed to GeometryGenerator.
+Preset position buttons (Top/Left/Right/Front/Back) remain as a quick alternative. Tapping a preset button places the attachment at that position without entering placement mode. The user can then switch to placement mode to fine-tune.
 
 #### Gesture Summary
 
-| Gesture | Action |
-|---------|--------|
-| Single tap | Place attachment at touch point |
-| Drag on attachment | Slide along model surface |
-| Two-finger rotate | Rotate attachment around surface normal |
-| Pinch on attachment | Resize attachment |
-| Tap empty space | Orbit camera (normal preview behavior) |
-| Long press | Reset attachment to nearest preset position |
-| Double tap attachment | Remove attachment |
-| Three-finger tap | Undo last placement action |
-
-#### Undo/Redo
-
-- Maintain a stack of placement actions (move, rotate, resize, place, remove)
-- Three-finger tap to undo, or use toolbar undo/redo buttons
-- Stack depth: 20 actions maximum
-- Undo restores previous position, rotation, and scale
-
-#### Multiple Attachments
-
-Users may want to combine attachments. Valid combinations:
-
-| Combination | Allowed | Notes |
-|-------------|---------|-------|
-| Base + Keyring Loop | ✅ | Display model with base, loop on top |
-| Base + Wall Hook | ❌ | Conflicting purpose - warn user |
-| Keyring Loop + Wall Hook | ❌ | Conflicting purpose - warn user |
-| Multiple Keyring Loops | ❌ | One loop only |
-| Multiple Wall Hooks | ❌ | One hook only |
-
-When user selects an incompatible combination, show a dialog explaining why and offer to replace the existing attachment.
-
-#### Small Screen Handling
-
-On devices with screens < 5.5":
-- Placement preset buttons collapse into a dropdown menu
-- "Zoom to placement" button magnifies the area around the attachment point
-- Touch target for the placed attachment is expanded to 48dp minimum
-- A precision mode toggle enables a crosshair cursor offset from the finger so the user can see what they're touching
-
-#### Accessibility
-
-- **TalkBack support**: Preset buttons are fully labeled. In custom placement mode, TalkBack announces the region of the model under focus (e.g. "top of head", "left side")
-- **Switch Access**: All placement actions available via toolbar buttons as alternative to gestures
-- **Keyboard/D-pad**: Arrow keys nudge attachment position in small increments, Enter confirms
-- **Haptic feedback**: Vibration pulse when attachment snaps to surface and when placement is invalid
+| Mode | Gesture | Action |
+|------|---------|--------|
+| Camera | One-finger drag | Orbit camera |
+| Camera | Two-finger pinch | Zoom |
+| Camera | Two-finger drag | Pan |
+| Placement | Tap on model | Place attachment |
+| Placement | Drag on model | Slide attachment along surface |
+| Placement | Two-finger rotate | Rotate attachment around normal |
+| Placement | Pinch | Scale attachment |
+| Either | Toggle button | Switch mode |
 
 ### Preview Rendering
 

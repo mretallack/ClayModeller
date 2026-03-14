@@ -55,7 +55,7 @@ class MainActivity : AppCompatActivity() {
         
         // Set up floating menu button
         val fabMenu = findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fab_menu)
-        fabMenu.setOnClickListener {
+        fabMenu?.setOnClickListener {
             // Show menu (will implement popup menu)
             showMenu(it)
         }
@@ -381,6 +381,7 @@ class MainActivity : AppCompatActivity() {
         popup.menu.add(0, 4, 0, "Examples")
         popup.menu.add(0, 5, 0, "Lighting")
         popup.menu.add(0, 6, 0, "Export STL")
+        popup.menu.add(0, 7, 0, "Export with Options...")
         
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -390,6 +391,7 @@ class MainActivity : AppCompatActivity() {
                 4 -> { showExamplesDialog(); true }
                 5 -> { showLightingDialog(); true }
                 6 -> { showExportDialog(); true }
+                7 -> { launchExportWizard(); true }
                 else -> false
             }
         }
@@ -554,6 +556,12 @@ class MainActivity : AppCompatActivity() {
                 android.widget.Toast.makeText(this, "Export failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
             }
         }.show()
+    }
+    
+    private fun launchExportWizard() {
+        val model = viewModel.model.value ?: return
+        com.claymodeler.ui.wizard.ExportWizardActivity.modelHolder = model.clone()
+        startActivity(android.content.Intent(this, com.claymodeler.ui.wizard.ExportWizardActivity::class.java))
     }
     
     override fun onDestroy() {

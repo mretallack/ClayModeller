@@ -9,6 +9,7 @@ import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import com.claymodeler.renderer.ModelRenderer
+import com.claymodeler.tool.LightModeTool
 import com.claymodeler.viewmodel.ModelingViewModel
 
 class MainActivity : AppCompatActivity() {
@@ -98,8 +99,9 @@ class MainActivity : AppCompatActivity() {
         val btnPinch = findViewById<android.widget.Button>(R.id.btn_pinch)
         val btnInflate = findViewById<android.widget.Button>(R.id.btn_inflate)
         val btnView = findViewById<android.widget.Button>(R.id.btn_view)
-        
-        val toolButtons = listOfNotNull(btnRemove, btnAdd, btnPull, btnSmooth, btnFlatten, btnPinch, btnInflate, btnView)
+        val btnLight = findViewById<android.widget.Button>(R.id.btn_light)
+
+        val toolButtons = listOfNotNull(btnRemove, btnAdd, btnPull, btnSmooth, btnFlatten, btnPinch, btnInflate, btnView, btnLight)
         
         btnUndo?.setOnClickListener {
             viewModel.undo()
@@ -130,6 +132,9 @@ class MainActivity : AppCompatActivity() {
         }
         btnView?.setOnClickListener {
             viewModel.setTool(viewModel.viewModeTool)
+        }
+        btnLight?.setOnClickListener {
+            viewModel.setTool(viewModel.lightModeTool)
         }
         
         // Set up symmetry button
@@ -228,6 +233,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.widget.Button>(R.id.btn_pinch)?.isSelected = false
         findViewById<android.widget.Button>(R.id.btn_inflate)?.isSelected = false
         findViewById<android.widget.Button>(R.id.btn_view)?.isSelected = false
+        findViewById<android.widget.Button>(R.id.btn_light)?.isSelected = false
+        renderer.showLightIndicator = tool is LightModeTool
+        findViewById<android.widget.Button>(R.id.btn_light)?.isSelected = false
+        renderer.showLightIndicator = tool is LightModeTool
         
         // Highlight active tool
         when (tool) {
@@ -239,6 +248,7 @@ class MainActivity : AppCompatActivity() {
             viewModel.pinchTool -> findViewById<android.widget.Button>(R.id.btn_pinch)?.isSelected = true
             viewModel.inflateTool -> findViewById<android.widget.Button>(R.id.btn_inflate)?.isSelected = true
             viewModel.viewModeTool -> findViewById<android.widget.Button>(R.id.btn_view)?.isSelected = true
+            viewModel.lightModeTool -> findViewById<android.widget.Button>(R.id.btn_light)?.isSelected = true
         }
     }
     
@@ -310,6 +320,22 @@ class MainActivity : AppCompatActivity() {
                                     }
                                 }
                             }
+                        } else if (viewModel.toolEngine.getActiveTool() is LightModeTool) {
+                            val model = viewModel.model.value
+                            if (model != null) {
+                                val sensitivity = 0.02f
+                                val lp = model.lightPosition
+                                val dist = kotlin.math.sqrt(lp.x * lp.x + lp.y * lp.y + lp.z * lp.z)
+                                var theta = kotlin.math.atan2(lp.z, lp.x) + dx * sensitivity
+                                var phi = kotlin.math.acos((lp.y / dist).coerceIn(-1f, 1f)) + dy * sensitivity
+                                phi = phi.coerceIn(0.1f, Math.PI.toFloat() - 0.1f)
+                                model.lightPosition = com.claymodeler.model.Vector3(
+                                    dist * kotlin.math.sin(phi) * kotlin.math.cos(theta),
+                                    dist * kotlin.math.cos(phi),
+                                    dist * kotlin.math.sin(phi) * kotlin.math.sin(theta)
+                                )
+                                renderer.showLightIndicator = true
+                            }
                         } else {
                             glSurfaceView.queueEvent {
                                 renderer.rotateCamera(dx, dy)
@@ -379,7 +405,6 @@ class MainActivity : AppCompatActivity() {
         popup.menu.add(0, 2, 0, "Save")
         popup.menu.add(0, 3, 0, "Load")
         popup.menu.add(0, 4, 0, "Examples")
-        popup.menu.add(0, 5, 0, "Lighting")
         popup.menu.add(0, 6, 0, "Export STL")
         popup.menu.add(0, 7, 0, "Export with Options...")
         
@@ -389,7 +414,6 @@ class MainActivity : AppCompatActivity() {
                 2 -> { showSaveDialog(); true }
                 3 -> { showLoadDialog(); true }
                 4 -> { showExamplesDialog(); true }
-                5 -> { showLightingDialog(); true }
                 6 -> { showExportDialog(); true }
                 7 -> { launchExportWizard(); true }
                 else -> false
@@ -417,7 +441,7 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             5 -> {
-                showLightingDialog()
+                showExamplesDialog()
                 true
             }
             6 -> {
@@ -475,11 +499,6 @@ class MainActivity : AppCompatActivity() {
         }.show()
     }
     
-    private fun showLightingDialog() {
-        viewModel.model.value?.let { model ->
-            com.claymodeler.ui.LightingDialog(this, model).show()
-        }
-    }
     
     private fun showExamplesDialog() {
         val exampleManager = com.claymodeler.examples.ExampleManager(this)

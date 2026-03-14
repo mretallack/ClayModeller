@@ -82,6 +82,10 @@ class ModelRenderer(private val context: Context) : GLSurfaceView.Renderer {
     private var gridNormalVbo = 0
     private var gridVertexCount = 0
     private var gridY = -1f
+    var showLightIndicator = false
+    private var lightIndicatorVbo = 0
+    private var lightIndicatorNormalVbo = 0
+    private var lightIndicatorVertexCount = 0
 
     override fun onDrawFrame(gl: GL10?) {
         // Clear buffers
@@ -189,6 +193,44 @@ class ModelRenderer(private val context: Context) : GLSurfaceView.Renderer {
             GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0)
             GLES30.glGetError() // clear any grid errors
         }
+
+        // Draw light indicator
+        if (showLightIndicator) {
+            if (lightIndicatorVbo == 0) buildLightIndicator()
+            val lightPos = model?.lightPosition ?: com.claymodeler.model.Vector3(2f, 3f, 2f)
+            val lightModel = FloatArray(16)
+            Matrix.setIdentityM(lightModel, 0)
+            Matrix.translateM(lightModel, 0, lightPos.x, lightPos.y, lightPos.z)
+            Matrix.scaleM(lightModel, 0, 0.15f, 0.15f, 0.15f)
+            val lightMvp = FloatArray(16)
+            val lightTemp = FloatArray(16)
+            Matrix.multiplyMM(lightTemp, 0, camera.getViewMatrix(), 0, lightModel, 0)
+            Matrix.multiplyMM(lightMvp, 0, projectionMatrix, 0, lightTemp, 0)
+
+            val mvpH = GLES30.glGetUniformLocation(shaderProgram, "uMVPMatrix")
+            GLES30.glUniformMatrix4fv(mvpH, 1, false, lightMvp, 0)
+            val modelH = GLES30.glGetUniformLocation(shaderProgram, "uModelMatrix")
+            GLES30.glUniformMatrix4fv(modelH, 1, false, lightModel, 0)
+            val colorH = GLES30.glGetUniformLocation(shaderProgram, "uClayColor")
+            GLES30.glUniform3f(colorH, 1f, 0.9f, 0.3f) // yellow
+            val lightIntH = GLES30.glGetUniformLocation(shaderProgram, "uLightIntensity")
+            GLES30.glUniform1f(lightIntH, 3f) // bright so it's always visible
+
+            GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, lightIndicatorVbo)
+            GLES30.glEnableVertexAttribArray(0)
+            GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, 0)
+            GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, lightIndicatorNormalVbo)
+            GLES30.glEnableVertexAttribArray(1)
+            GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 0, 0)
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, lightIndicatorVertexCount)
+            GLES30.glDisableVertexAttribArray(0)
+            GLES30.glDisableVertexAttribArray(1)
+            GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0)
+
+            // Restore model lighting
+            GLES30.glUniform1f(lightIntH, model?.lightIntensity ?: 1f)
+            GLES30.glGetError()
+        }
         
         checkGLError("onDrawFrame")
     }
@@ -250,6 +292,40 @@ class ModelRenderer(private val context: Context) : GLSurfaceView.Renderer {
         camera.reset()
     }
     
+    private fun buildLightIndicator() {
+        val stacks = 8; val slices = 8
+        val verts = mutableListOf<Float>()
+        val norms = mutableListOf<Float>()
+        for (i in 0 until stacks) {
+            val phi1 = (Math.PI * i / stacks).toFloat()
+            val phi2 = (Math.PI * (i + 1) / stacks).toFloat()
+            for (j in 0 until slices) {
+                val th1 = (2 * Math.PI * j / slices).toFloat()
+                val th2 = (2 * Math.PI * (j + 1) / slices).toFloat()
+                fun v(p: Float, t: Float) {
+                    val x = kotlin.math.sin(p) * kotlin.math.cos(t)
+                    val y = kotlin.math.cos(p)
+                    val z = kotlin.math.sin(p) * kotlin.math.sin(t)
+                    verts.addAll(listOf(x, y, z)); norms.addAll(listOf(x, y, z))
+                }
+                v(phi1, th1); v(phi2, th1); v(phi2, th2)
+                v(phi1, th1); v(phi2, th2); v(phi1, th2)
+            }
+        }
+        lightIndicatorVertexCount = verts.size / 3
+        val vBuf = java.nio.ByteBuffer.allocateDirect(verts.size * 4).order(java.nio.ByteOrder.nativeOrder()).asFloatBuffer()
+        vBuf.put(verts.toFloatArray()); vBuf.position(0)
+        val nBuf = java.nio.ByteBuffer.allocateDirect(norms.size * 4).order(java.nio.ByteOrder.nativeOrder()).asFloatBuffer()
+        nBuf.put(norms.toFloatArray()); nBuf.position(0)
+        val b = IntArray(2); GLES30.glGenBuffers(2, b, 0)
+        lightIndicatorVbo = b[0]; lightIndicatorNormalVbo = b[1]
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, lightIndicatorVbo)
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, verts.size * 4, vBuf, GLES30.GL_STATIC_DRAW)
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, lightIndicatorNormalVbo)
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, norms.size * 4, nBuf, GLES30.GL_STATIC_DRAW)
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0)
+    }
+
     private fun buildGridData(m: ClayModel) {
         var minY = Float.MAX_VALUE
         var minX = Float.MAX_VALUE; var maxX = -Float.MAX_VALUE

@@ -152,6 +152,16 @@
                 android:tooltipText="View"
                 android:contentDescription="View mode" />
 
+            <Button
+                android:id="@+id/btn_light"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="@drawable/tool_button_background"
+                android:text="💡"
+                android:textSize="20sp"
+                android:tooltipText="Light"
+                android:contentDescription="Light mode - drag to move light" />
+
         </LinearLayout>
     </HorizontalScrollView>
 

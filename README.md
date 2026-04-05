@@ -1,4 +1,4 @@
-# ClayModeler
+# ClayModeller
 
 An Android app for creating 3D models that can be printed using clay.
 
@@ -6,9 +6,9 @@ An Android app for creating 3D models that can be printed using clay.
 
 - 🎨 **Intuitive Sculpting** - Remove, add, and pull clay with natural touch gestures
 - 🖐️ **Drag-Based Sculpting** - Add and Pull tools respond to finger drag direction for intuitive modeling
-- 🛠️ **8 Sculpting Tools** - Remove, Add, Pull, Smooth, Flatten, Pinch, Inflate, and View mode
+- 🛠️ **9 Sculpting Tools** - Remove, Add, Pull, Smooth, Flatten, Pinch, Inflate, Light, and View mode
 - 💡 **Per-Model Lighting** - Adjust light position (X/Y/Z) and intensity (0-2x), saved with each model
-- 📚 **Example Models** - 5 built-in examples to learn sculpting techniques
+- 📚 **Example Models** - 6 built-in examples to learn sculpting techniques
 - 🔄 **Undo/Redo** - Up to 20 levels of undo history
 - 💾 **Save/Load** - Save your models in custom .clay format
 - 📤 **STL Export** - Export models for 3D printing (50-200mm)
@@ -18,7 +18,7 @@ An Android app for creating 3D models that can be printed using clay.
 
 ## Screenshots
 
-<img src="screenshots/app-main-screen.jpg" width="300" alt="ClayModeler main screen showing sculpting tools and clay sphere">
+<img src="screenshots/app-main-screen.jpg" width="300" alt="ClayModeller main screen showing sculpting tools and clay sphere">
 
 *Main screen with sculpting tools and adjustable brush size/strength*
 
@@ -32,7 +32,7 @@ An Android app for creating 3D models that can be printed using clay.
 
 ### From GitHub Releases
 
-1. Download the latest APK from [Releases](https://github.com/yourusername/ClayModeler/releases)
+1. Download the latest APK from [Releases](https://github.com/mretallack/ClayModeller/releases)
 2. Enable "Install from Unknown Sources" in Android settings
 3. Install the APK
 
@@ -48,8 +48,8 @@ An Android app for creating 3D models that can be printed using clay.
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ClayModeler.git
-cd ClayModeler
+git clone https://github.com/mretallack/ClayModeller.git
+cd ClayModeller
 
 # Build debug APK
 ./gradlew assembleDebug
@@ -136,6 +136,7 @@ adb emu kill
 - **Flatten (▬)** - Create flat surfaces and planes - defines plane on first touch
 - **Pinch (🤏)** - Pull vertices toward center with quadratic falloff for sharp details
 - **Inflate (🎈)** - Uniform expansion along surface normals for rounded, organic forms
+- **Light (💡)** - Interactively adjust light position by dragging on the model
 - **View (👁️)** - Examine without editing - rotate, zoom, pan, double-tap to reset
 
 ### Camera Controls
@@ -180,7 +181,7 @@ Standard STL for 3D printing:
 3. Commit changes
 4. Create tag: `git tag -a v1.0.0 -m "Release 1.0.0"`
 5. Push tag: `git push origin v1.0.0`
-6. GitHub Actions builds and creates release
+6. Create release on GitHub — Actions builds and attaches the signed APK
 7. Download APK from releases
 8. Test release APK
 9. Announce release
@@ -208,10 +209,12 @@ Standard STL for 3D printing:
 2. ~~**Custom App Icon**~~ - ✅ Completed
 3. ~~**Additional Tools**~~ - ✅ Completed (Smooth, Flatten, Pinch, Inflate)
 4. ~~**Lighting Controls**~~ - ✅ Completed (Per-model lighting with position and intensity)
-5. ~~**Example Models**~~ - ✅ Completed (5 built-in examples)
+5. ~~**Example Models**~~ - ✅ Completed (6 built-in examples)
 6. **Enhanced Examples** - Create more detailed example models using the sculpting tools
 7. **Tool Presets** - Save and load tool size/strength configurations
 8. **Multiple Light Sources** - Add support for additional lights
+9. **Screen Rotation** - Screen rotation incorrectly triggers the resume/unsaved changes dialog
+10. **Sharing Support** - Add sharing support for STL exports and clay files
 
 ## License
 
@@ -219,4 +222,4 @@ MIT License - see LICENSE file
 
 ## Privacy
 
-ClayModeler does not collect any user data. All files are stored locally on your device. Crash reports are only shared if you choose to send them.
+ClayModeller does not collect any user data. All files are stored locally on your device. Crash reports are only shared if you choose to send them.

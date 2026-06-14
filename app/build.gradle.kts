@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.claymodeler"
+    namespace = "uk.org.retallack.claymodeler"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.claymodeler"
+        applicationId = "uk.org.retallack.claymodeler"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1

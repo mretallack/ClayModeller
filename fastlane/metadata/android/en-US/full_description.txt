@@ -1,0 +1,15 @@
+ClayModeller is an Android app for creating 3D models that can be printed using clay.
+
+Features:
+• 9 Sculpting Tools - Remove, Add, Pull, Smooth, Flatten, Pinch, Inflate, Light, and View mode
+• Drag-Based Sculpting - Add and Pull tools respond to finger drag direction for intuitive modeling
+• Per-Model Lighting - Adjust light position and intensity, saved with each model
+• Example Models - 6 built-in examples to learn sculpting techniques
+• Undo/Redo - Up to 20 levels of undo history
+• Save/Load - Save your models in custom .clay format
+• STL Export - Export models for 3D printing (50-200mm)
+• Auto-Save - Automatic backup every minute
+• View Mode - Examine your model with camera controls (pinch zoom, rotate, pan)
+• Visual Cursor - See tool size and position in real-time
+
+ClayModeller does not collect any user data. All files are stored locally on your device.

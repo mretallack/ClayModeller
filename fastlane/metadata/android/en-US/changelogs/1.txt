@@ -1,0 +1,1 @@
+Initial release with 9 sculpting tools, STL export, per-model lighting, 6 example models, undo/redo, auto-save, and .clay file format.

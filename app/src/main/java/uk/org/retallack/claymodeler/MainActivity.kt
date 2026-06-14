@@ -139,6 +139,7 @@ class MainActivity : AppCompatActivity() {
         
         // Set up symmetry button
         val btnSymmetry = findViewById<android.widget.Button>(R.id.btn_symmetry)
+        btnSymmetry?.text = if (viewModel.isSymmetryEnabled()) "Symmetry: ON" else "Symmetry: OFF"
         btnSymmetry?.setOnClickListener {
             viewModel.toggleSymmetry()
             btnSymmetry.text = if (viewModel.isSymmetryEnabled()) "Symmetry: ON" else "Symmetry: OFF"

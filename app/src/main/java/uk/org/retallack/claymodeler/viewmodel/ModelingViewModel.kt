@@ -50,7 +50,8 @@ class ModelingViewModel : ViewModel() {
         _model.value = initialModel
         
         // Set default tool
-        setTool(removeClayTool)
+        setTool(addClayTool)
+        toolEngine.symmetryEnabled = true
     }
     
     fun setTool(tool: Tool) {
